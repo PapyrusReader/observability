@@ -1,0 +1,9 @@
+[Unit]
+Description=Run the production monitoring acceptance report after 24 hours
+
+[Timer]
+OnActiveSec=24h 5min
+Unit=papyrus-observability-acceptance.service
+
+[Install]
+WantedBy=timers.target

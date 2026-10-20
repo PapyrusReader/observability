@@ -1,0 +1,12 @@
+papyrus_replication:
+  query: "SELECT slot_name, CASE WHEN active THEN 1 ELSE 0 END AS active, COALESCE(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn), 0) AS retained_wal_bytes FROM pg_replication_slots WHERE slot_type = 'logical'"
+  metrics:
+    - slot_name:
+        usage: LABEL
+        description: Replication slot
+    - active:
+        usage: GAUGE
+        description: Whether the replication slot is active
+    - retained_wal_bytes:
+        usage: GAUGE
+        description: WAL bytes retained by a logical replication slot

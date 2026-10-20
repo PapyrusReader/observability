@@ -1,0 +1,29 @@
+name: papyrus-edge
+
+services:
+  proxy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    ports: ['80:80', '443:443', '443:443/udp']
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
+      WEBSITE_DOMAIN: ${WEBSITE_DOMAIN:?Set WEBSITE_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN}
+      SYNC_DOMAIN: ${SYNC_DOMAIN:?Set SYNC_DOMAIN}
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge]
+
+networks:
+  edge:
+    external: true
+    name: papyrus-edge
+
+volumes:
+  caddy-data:
+    name: papyrus-edge-caddy-data
+  caddy-config:
+    name: papyrus-edge-caddy-config
