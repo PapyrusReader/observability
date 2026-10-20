@@ -26,7 +26,7 @@
         {
           "refId": "A",
           "expr": "papyrus_container_healthy",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -54,7 +54,7 @@
         {
           "refId": "A",
           "expr": "probe_success",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -82,7 +82,7 @@
         {
           "refId": "A",
           "expr": "sum by(host) (rate(caddy_http_requests_total[5m]))",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -109,8 +109,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host) (rate(caddy_http_requests_total{code=~\"5..\"}[5m]))",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "expr": "sum by(host) (rate(caddy_http_requests_total{code=~\"5..\"}[5m])) or (sum by(host) (rate(caddy_http_requests_total[5m])) * 0)",
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -138,7 +138,7 @@
         {
           "refId": "A",
           "expr": "node_memory_MemAvailable_bytes",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -166,7 +166,7 @@
         {
           "refId": "A",
           "expr": "papyrus_root_available_bytes",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -194,7 +194,7 @@
         {
           "refId": "A",
           "expr": "up",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -222,7 +222,7 @@
         {
           "refId": "A",
           "expr": "papyrus_loki_disk_guard_active",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
