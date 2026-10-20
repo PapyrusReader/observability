@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from tools.render import container_usage
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -25,6 +26,15 @@ class AlertExpressionTests(unittest.TestCase):
             {'series': 'pg_stat_database_numbackends{instance="postgresql://database:5432/papyrus",datname="papyrus"}', 'values': '5 90 5'},
             {'series': 'pg_settings_max_connections{instance="postgresql://database:5432/papyrus",server="database:5432"}', 'values': '100 100 100'},
         ], 'promql_expr_test': cases}]}
+        identifier = 'a' * 64
+        fixture['tests'].append({'interval': '1m', 'input_series': [
+            {'series': f'container_memory_working_set_bytes{{id="/system.slice/docker-{identifier}.scope",image="example",instance="old"}}', 'values': '100'},
+            {'series': f'container_memory_working_set_bytes{{id="/system.slice/docker-{identifier}.scope",image="example",instance="new"}}', 'values': '100'},
+            {'series': 'container_memory_working_set_bytes{id="/",image=""}', 'values': '1000'},
+            {'series': f'papyrus_container_info{{container_id="{identifier}",project="papyrus-production",service="api"}}', 'values': '1'},
+        ], 'promql_expr_test': [{'expr': container_usage('container_memory_working_set_bytes{image!=""}'), 'eval_time': '0m', 'exp_samples': [
+            {'labels': f'{{id="/system.slice/docker-{identifier}.scope",container_id="{identifier}",project="papyrus-production",service="api"}}', 'value': 100},
+        ]}]})
         image = json.loads((ROOT / 'images.lock.json').read_text())['prometheus']
         with tempfile.TemporaryDirectory() as directory:
             Path(directory).chmod(0o755)

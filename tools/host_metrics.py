@@ -79,6 +79,8 @@ def collect(resume=False):
         for service in services:
             state = current.get(project + '/' + service, {})
             labels = f'project="{project}",service="{service}"'
+            if state.get('id'):
+                metrics.append(f'papyrus_container_info{{{labels},container_id="{state["id"]}"}} 1')
             for name, field in [('healthy', 'healthy'), ('restarts_total', 'restarts'), ('oom_total', 'oom_total')]:
                 metrics.append(f'papyrus_container_{name}{{{labels}}} {state.get(field, 0)}')
     sizes_path = STATE / 'sizes.json'
