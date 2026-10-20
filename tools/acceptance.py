@@ -6,13 +6,14 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from render import container_usage
 
 STATE = Path('/var/lib/papyrus-observability')
 CHECKS = {
     'available_memory': 'min_over_time(node_memory_MemAvailable_bytes[24h]) >= 536870912',
     'monitoring_oom_events': 'sum(increase(papyrus_container_oom_total{project="papyrus-observability"}[24h])) == 0',
     'required_scrapes': 'min(min_over_time(up[24h])) == 1',
-    'container_resource_coverage': 'count(container_memory_working_set_bytes{container_label_com_docker_compose_service!=""}) >= scalar(count(papyrus_container_healthy))',
+    'container_resource_coverage': 'count(' + container_usage('container_memory_working_set_bytes{image!=""}') + ') >= scalar(count(papyrus_container_healthy))',
     'collector_freshness': 'max_over_time((time() - papyrus_host_collector_timestamp_seconds)[24h:1m]) < 180',
     'log_guard': 'max_over_time(papyrus_loki_disk_guard_active[24h]) == 0',
 }

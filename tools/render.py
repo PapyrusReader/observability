@@ -6,6 +6,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CAD = 'container_label_com_docker_compose_service'
+
+
+def container_usage(expression):
+ return 'label_replace(max by(id) (' + expression + '), "container_id", "$1", "id", ".*docker[-/]([a-f0-9]{64})([.]scope)?") * on(container_id) group_left(project,service) max by(container_id,project,service) (papyrus_container_info)'
+
+
 DASHBOARDS = {
  'overview': [
   ('Required service health', 'papyrus_container_healthy', 'short'),
@@ -29,8 +35,8 @@ DASHBOARDS = {
   ('Host CPU utilization', '1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))', 'percentunit'),
   ('Host load average', 'node_load1', 'short'),
   ('Available memory', 'node_memory_MemAvailable_bytes', 'bytes'),
-  ('Container memory working set', 'sum by('+CAD+') (container_memory_working_set_bytes{'+CAD+'!=""})', 'bytes'),
-  ('Container CPU cores', 'sum by('+CAD+') (rate(container_cpu_usage_seconds_total{'+CAD+'!=""}[5m]))', 'short'),
+  ('Container memory working set', container_usage('container_memory_working_set_bytes{image!=""}'), 'bytes'),
+  ('Container CPU cores', container_usage('rate(container_cpu_usage_seconds_total{image!=""}[5m])'), 'short'),
   ('Disk read latency', 'rate(node_disk_read_time_seconds_total{device="sda"}[5m]) / clamp_min(rate(node_disk_reads_completed_total{device="sda"}[5m]), 0.001)', 's'),
   ('Disk write latency', 'rate(node_disk_write_time_seconds_total{device="sda"}[5m]) / clamp_min(rate(node_disk_writes_completed_total{device="sda"}[5m]), 0.001)', 's'),
   ('Storage growth', 'papyrus_storage_bytes', 'bytes'),

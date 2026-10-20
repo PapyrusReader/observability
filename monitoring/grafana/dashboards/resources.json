@@ -109,7 +109,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(container_label_com_docker_compose_service) (container_memory_working_set_bytes{container_label_com_docker_compose_service!=\"\"})",
+          "expr": "label_replace(max by(id) (container_memory_working_set_bytes{image!=\"\"}), \"container_id\", \"$1\", \"id\", \".*docker[-/]([a-f0-9]{64})([.]scope)?\") * on(container_id) group_left(project,service) max by(container_id,project,service) (papyrus_container_info)",
           "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
         }
       ],
@@ -137,7 +137,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service!=\"\"}[5m]))",
+          "expr": "label_replace(max by(id) (rate(container_cpu_usage_seconds_total{image!=\"\"}[5m])), \"container_id\", \"$1\", \"id\", \".*docker[-/]([a-f0-9]{64})([.]scope)?\") * on(container_id) group_left(project,service) max by(container_id,project,service) (papyrus_container_info)",
           "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
         }
       ],
