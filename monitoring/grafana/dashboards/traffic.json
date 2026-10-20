@@ -26,7 +26,7 @@
         {
           "refId": "A",
           "expr": "sum by(host) (rate(caddy_http_requests_total[5m]))",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -54,7 +54,7 @@
         {
           "refId": "A",
           "expr": "sum by(host) (rate(caddy_http_response_size_bytes_sum[5m]))",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -82,7 +82,7 @@
         {
           "refId": "A",
           "expr": "sum by(host,code) (increase(caddy_http_requests_total[1h]))",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -110,7 +110,7 @@
         {
           "refId": "A",
           "expr": "histogram_quantile(0.95, sum by(le,host) (rate(caddy_http_request_duration_seconds_bucket{host!=\"sync.papyrus-reader.com\"}[5m])))",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -138,7 +138,7 @@
         {
           "refId": "A",
           "expr": "histogram_quantile(0.95, sum by(le) (rate(caddy_http_request_duration_seconds_bucket{host=\"sync.papyrus-reader.com\"}[5m])))",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
@@ -166,7 +166,7 @@
         {
           "refId": "A",
           "expr": "sum by(host) (increase(caddy_http_response_size_bytes_sum[$__range]))",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
       "gridPos": {
