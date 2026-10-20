@@ -1,6 +1,6 @@
-# Papyrus observability
+# Observability
 
-Self-hosted production monitoring for Papyrus: Grafana dashboards and email alerts,
+Self-hosted production monitoring for Papyrus, which includes Grafana dashboards and email alerts,
 Prometheus metrics, Loki logs, and Alloy collection. This repository also owns the
 shared Caddy HTTPS proxy and WireGuard access.
 
