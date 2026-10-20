@@ -12,6 +12,10 @@ common:
     filesystem:
       chunks_directory: /loki/chunks
       rules_directory: /loki/rules
+ingester:
+  wal:
+    dir: /loki/wal
+    replay_memory_ceiling: 128MB
 schema_config:
   configs:
     - from: '2026-01-01'

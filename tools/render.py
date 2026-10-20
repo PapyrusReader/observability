@@ -40,6 +40,7 @@ DASHBOARDS = {
   ('Filesystem free inodes', 'node_filesystem_files_free{mountpoint="/"}', 'short'),
  ],
  'database-sync': [
+  ('Database collector connectivity', 'pg_up', 'short'),
   ('Database size', 'pg_database_size_bytes{datname!~"template.*"}', 'bytes'),
   ('Database connections', 'sum by(server) (pg_stat_database_numbackends)', 'short'),
   ('Database deadlocks', 'increase(pg_stat_database_deadlocks[1h])', 'short'),
@@ -64,6 +65,8 @@ ALERTS = [
  ('restarts','Repeated container restarts','increase(papyrus_container_restarts_total[15m]) >= 3','1m','warning'),
  ('oom','Container OOM detected','increase(papyrus_container_oom_total[10m]) > 0','0s','critical'),
  ('http-errors','Elevated HTTP server errors','(sum by(host) (increase(caddy_http_requests_total{code=~"5.."}[10m])) >= 20) and (sum by(host) (rate(caddy_http_requests_total{code=~"5.."}[10m])) / sum by(host) (rate(caddy_http_requests_total[10m])) > 0.05)','5m','critical'),
+ ('db-unreachable','Database monitoring connection failed','pg_up < 1','3m','critical'),
+ ('replication-inactive','Logical replication slot inactive','papyrus_replication_active < 1','5m','warning'),
  ('db-connections','Database connections above 80%','sum by(server) (pg_stat_database_numbackends) / on(server) pg_settings_max_connections > 0.8','10m','warning'),
  ('wal-retained','Replication retaining over 512 MiB WAL','papyrus_replication_retained_wal_bytes > 536870912','10m','warning'),
  ('tls-expiry','TLS certificate expires within 14 days','probe_ssl_earliest_cert_expiry - time() < 1209600','10m','warning'),
@@ -83,7 +86,7 @@ def render():
  for uid,title,expr,pending,severity in ALERTS:
   if uid != 'http-errors':
    expr = re.sub(r' (>=|>|<) ', r' \1 bool ', expr)
-  rules.append({'uid':'papyrus-'+uid,'title':title,'condition':'C','for':pending,'noDataState':'OK' if uid in ['http-errors','wal-retained','oom','restarts'] else 'Alerting','execErrState':'Alerting','annotations':{'summary':title,'description':'Inspect the Papyrus dashboards and the observability recovery runbook.'},'labels':{'severity':severity},'data':[{'refId':'A','relativeTimeRange':{'from':600,'to':0},'datasourceUid':'prometheus','model':{'refId':'A','expr':expr,'instant':True,'intervalMs':1000,'maxDataPoints':43200}},{'refId':'C','datasourceUid':'__expr__','model':{'refId':'C','type':'threshold','expression':'A','conditions':[{'evaluator':{'type':'gt','params':[0]},'operator':{'type':'and'},'reducer':{'type':'last'},'type':'query','query':{'params':['C']}}]}}]})
+  rules.append({'uid':'papyrus-'+uid,'title':title,'condition':'C','for':pending,'noDataState':'OK' if uid in ['http-errors','wal-retained','replication-inactive','oom','restarts'] else 'Alerting','execErrState':'Alerting','annotations':{'summary':title,'description':'Inspect the Papyrus dashboards and the observability recovery runbook.'},'labels':{'severity':severity},'data':[{'refId':'A','relativeTimeRange':{'from':600,'to':0},'datasourceUid':'prometheus','model':{'refId':'A','expr':expr,'instant':True,'intervalMs':1000,'maxDataPoints':43200}},{'refId':'C','datasourceUid':'__expr__','model':{'refId':'C','type':'threshold','expression':'A','conditions':[{'evaluator':{'type':'gt','params':[0]},'operator':{'type':'and'},'reducer':{'type':'last'},'type':'query','query':{'params':['C']}}]}}]})
  (ROOT/'monitoring/grafana/provisioning/alerting/rules.yml').write_text(json.dumps({'apiVersion':1,'groups':[{'orgId':1,'name':'Papyrus production','folder':'Papyrus','interval':'1m','rules':rules}]},indent=2)+'\n')
 
 
