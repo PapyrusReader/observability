@@ -1,0 +1,7 @@
+[Unit]
+Description=Evaluate Papyrus monitoring after a full day of operation
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /srv/apps/papyrus-observability/tools/acceptance.py

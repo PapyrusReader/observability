@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect Papyrus host metadata and enforce Loki disk guard
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /srv/apps/papyrus-observability/tools/host_metrics.py
+TimeoutStartSec=90
+Nice=10
+IOSchedulingClass=idle

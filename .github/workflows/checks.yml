@@ -1,0 +1,19 @@
+name: Observability checks
+on:
+  pull_request:
+  push:
+    branches: [development, master]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m unittest discover -s tests -v
+      - run: python3 tools/render.py && git diff --exit-code
+      - run: python3 tools/check.py
+      - run: python3 tools/smoke.py
