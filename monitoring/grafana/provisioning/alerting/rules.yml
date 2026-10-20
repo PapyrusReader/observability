@@ -71,6 +71,69 @@
           ]
         },
         {
+          "uid": "papyrus-vpn-unavailable",
+          "title": "Monitoring VPN or private DNS unavailable",
+          "condition": "C",
+          "for": "3m",
+          "noDataState": "Alerting",
+          "execErrState": "Alerting",
+          "annotations": {
+            "summary": "Monitoring VPN or private DNS unavailable",
+            "description": "Inspect the Papyrus dashboards and the observability recovery runbook."
+          },
+          "labels": {
+            "severity": "critical"
+          },
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "expr": "min(papyrus_vpn_service_up) < bool 1",
+                "instant": true,
+                "intervalMs": 1000,
+                "maxDataPoints": 43200
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "type": "gt",
+                      "params": [
+                        0
+                      ]
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "reducer": {
+                      "type": "last"
+                    },
+                    "type": "query",
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
           "uid": "papyrus-container-unhealthy",
           "title": "Required container unhealthy",
           "condition": "C",

@@ -16,4 +16,5 @@ jobs:
       - run: python3 -m unittest discover -s tests -v
       - run: python3 tools/render.py && git diff --exit-code
       - run: python3 tools/check.py
+      - run: sh tools/vpn_smoke.sh
       - run: python3 tools/smoke.py

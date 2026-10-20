@@ -44,7 +44,7 @@
     },
     {
       "id": 2,
-      "title": "Public probes from production",
+      "title": "Monitoring VPN and DNS",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -53,7 +53,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "probe_success",
+          "expr": "papyrus_vpn_service_up",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
@@ -72,7 +72,7 @@
     },
     {
       "id": 3,
-      "title": "Requests per second by host",
+      "title": "Public probes from production",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -81,7 +81,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host) (rate(caddy_http_requests_total[5m]))",
+          "expr": "probe_success",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
@@ -93,14 +93,14 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       }
     },
     {
       "id": 4,
-      "title": "Server errors per second",
+      "title": "Requests per second by host",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -109,7 +109,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host) (rate(caddy_http_requests_total{code=~\"5..\"}[5m])) or (sum by(host) (rate(caddy_http_requests_total[5m])) * 0)",
+          "expr": "sum by(host) (rate(caddy_http_requests_total[5m]))",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
@@ -128,7 +128,7 @@
     },
     {
       "id": 5,
-      "title": "Available host memory",
+      "title": "Server errors per second",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -137,7 +137,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "node_memory_MemAvailable_bytes",
+          "expr": "sum by(host) (rate(caddy_http_requests_total{code=~\"5..\"}[5m])) or (sum by(host) (rate(caddy_http_requests_total[5m])) * 0)",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
@@ -149,14 +149,14 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "bytes"
+          "unit": "reqps"
         },
         "overrides": []
       }
     },
     {
       "id": 6,
-      "title": "Root filesystem available",
+      "title": "Available host memory",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -165,7 +165,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "papyrus_root_available_bytes",
+          "expr": "node_memory_MemAvailable_bytes",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
@@ -184,6 +184,34 @@
     },
     {
       "id": 7,
+      "title": "Root filesystem available",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "papyrus_root_available_bytes",
+          "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
       "title": "Collector and service scrapes",
       "type": "timeseries",
       "datasource": {
@@ -198,7 +226,7 @@
         }
       ],
       "gridPos": {
-        "x": 0,
+        "x": 12,
         "y": 24,
         "w": 12,
         "h": 8
@@ -211,7 +239,7 @@
       }
     },
     {
-      "id": 8,
+      "id": 9,
       "title": "Loki disk guard (1 = paused)",
       "type": "timeseries",
       "datasource": {
@@ -226,8 +254,8 @@
         }
       ],
       "gridPos": {
-        "x": 12,
-        "y": 24,
+        "x": 0,
+        "y": 32,
         "w": 12,
         "h": 8
       },
@@ -254,7 +282,7 @@
       ],
       "gridPos": {
         "x": 0,
-        "y": 32,
+        "y": 40,
         "w": 24,
         "h": 10
       }

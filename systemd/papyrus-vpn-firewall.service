@@ -1,0 +1,14 @@
+[Unit]
+Description=Restrict WireGuard peers to dashboard HTTPS
+Requires=docker.service
+After=docker.service ufw.service
+Before=wg-quick@wgmonitor.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh /srv/apps/papyrus-observability/vpn/firewall.sh
+ExecReload=/bin/sh /srv/apps/papyrus-observability/vpn/firewall.sh
+
+[Install]
+WantedBy=multi-user.target
