@@ -7,7 +7,7 @@
   "timezone": "browser",
   "refresh": "1m",
   "time": {
-    "from": "now-24h",
+    "from": "now-6h",
     "to": "now"
   },
   "tags": [
@@ -28,7 +28,8 @@
           "refId": "A",
           "expr": "sum(papyrus_app_users)",
           "legendFormat": "",
-          "instant": true
+          "instant": true,
+          "range": false
         }
       ],
       "gridPos": {
@@ -40,7 +41,11 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "min": 0
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
         },
         "overrides": []
       },
@@ -70,7 +75,8 @@
           "refId": "A",
           "expr": "sum(papyrus_app_books)",
           "legendFormat": "",
-          "instant": true
+          "instant": true,
+          "range": false
         }
       ],
       "gridPos": {
@@ -82,7 +88,11 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "min": 0
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
         },
         "overrides": []
       },
@@ -112,7 +122,8 @@
           "refId": "A",
           "expr": "sum(papyrus_app_files)",
           "legendFormat": "",
-          "instant": true
+          "instant": true,
+          "range": false
         }
       ],
       "gridPos": {
@@ -124,7 +135,11 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "min": 0
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
         },
         "overrides": []
       },
@@ -154,7 +169,8 @@
           "refId": "A",
           "expr": "sum(papyrus_app_file_bytes)",
           "legendFormat": "",
-          "instant": true
+          "instant": true,
+          "range": false
         }
       ],
       "gridPos": {
@@ -166,7 +182,11 @@
       "fieldConfig": {
         "defaults": {
           "unit": "bytes",
-          "min": 0
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
         },
         "overrides": []
       },
@@ -196,7 +216,8 @@
           "refId": "A",
           "expr": "papyrus_app_distinct_uploaded_contents",
           "legendFormat": "",
-          "instant": true
+          "instant": true,
+          "range": false
         }
       ],
       "gridPos": {
@@ -208,7 +229,11 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "min": 0
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
         },
         "overrides": []
       },
@@ -238,7 +263,8 @@
           "refId": "A",
           "expr": "time() - papyrus_app_statistics_timestamp_seconds",
           "legendFormat": "",
-          "instant": true
+          "instant": true,
+          "range": false
         }
       ],
       "gridPos": {
@@ -251,6 +277,9 @@
         "defaults": {
           "unit": "s",
           "min": 0,
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -297,7 +326,8 @@
           "refId": "A",
           "expr": "papyrus_app_collection_success",
           "legendFormat": "",
-          "instant": true
+          "instant": true,
+          "range": false
         }
       ],
       "gridPos": {
@@ -310,6 +340,10 @@
         "defaults": {
           "unit": "short",
           "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
           "mappings": [
             {
               "type": "value",
@@ -354,7 +388,8 @@
           "refId": "A",
           "expr": "papyrus_app_users",
           "legendFormat": "{{status}}",
-          "instant": false
+          "instant": false,
+          "range": true
         }
       ],
       "gridPos": {
@@ -385,7 +420,8 @@
           "refId": "A",
           "expr": "papyrus_app_recent_registrations",
           "legendFormat": "Last {{window}}",
-          "instant": false
+          "instant": false,
+          "range": true
         }
       ],
       "gridPos": {
@@ -416,7 +452,8 @@
           "refId": "A",
           "expr": "papyrus_app_books",
           "legendFormat": "{{kind}}",
-          "instant": false
+          "instant": false,
+          "range": true
         }
       ],
       "gridPos": {
@@ -447,7 +484,8 @@
           "refId": "A",
           "expr": "sum by(kind) (papyrus_app_files)",
           "legendFormat": "{{kind}}",
-          "instant": false
+          "instant": false,
+          "range": true
         }
       ],
       "gridPos": {
@@ -478,7 +516,8 @@
           "refId": "A",
           "expr": "sum by(format) (papyrus_app_files{kind=\"book_file\"})",
           "legendFormat": "{{format}}",
-          "instant": false
+          "instant": false,
+          "range": true
         }
       ],
       "gridPos": {
@@ -509,7 +548,8 @@
           "refId": "A",
           "expr": "sum by(format) (papyrus_app_files{kind=\"cover_image\"})",
           "legendFormat": "{{format}}",
-          "instant": false
+          "instant": false,
+          "range": true
         }
       ],
       "gridPos": {
@@ -540,7 +580,8 @@
           "refId": "A",
           "expr": "sum by(format) (papyrus_app_file_bytes{kind=\"book_file\"})",
           "legendFormat": "{{format}}",
-          "instant": false
+          "instant": false,
+          "range": true
         }
       ],
       "gridPos": {
@@ -571,7 +612,8 @@
           "refId": "A",
           "expr": "sum by(format) (papyrus_app_file_bytes{kind=\"cover_image\"})",
           "legendFormat": "{{format}}",
-          "instant": false
+          "instant": false,
+          "range": true
         }
       ],
       "gridPos": {
@@ -602,12 +644,15 @@
           "refId": "A",
           "expr": "sum(papyrus_app_file_bytes)",
           "legendFormat": "Registered file bytes",
-          "instant": false
+          "instant": false,
+          "range": true
         },
         {
           "refId": "B",
           "expr": "papyrus_storage_bytes{kind=\"media\"}",
-          "legendFormat": "Media volume disk usage"
+          "legendFormat": "Media volume disk usage",
+          "instant": false,
+          "range": true
         }
       ],
       "gridPos": {
@@ -638,7 +683,8 @@
           "refId": "A",
           "expr": "sum(papyrus_app_file_bytes) / clamp_min(sum(papyrus_app_files), 1)",
           "legendFormat": "Average bytes per file",
-          "instant": false
+          "instant": false,
+          "range": true
         }
       ],
       "gridPos": {
