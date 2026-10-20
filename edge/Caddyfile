@@ -1,0 +1,59 @@
+{
+	email {$ACME_EMAIL}
+	metrics {
+		per_host
+	}
+}
+
+(access_log) {
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>headers delete
+				request>uri delete
+				request>remote_ip delete
+				request>client_ip delete
+				request>remote_port delete
+				request>tls delete
+				resp_headers delete
+				user_id delete
+			}
+		}
+	}
+}
+
+:9180 {
+	metrics /metrics
+}
+
+{$WEBSITE_DOMAIN} {
+	import access_log
+	reverse_proxy papyrus-website:8080
+}
+
+www.{$WEBSITE_DOMAIN} {
+	import access_log
+	redir https://{$WEBSITE_DOMAIN}{uri} permanent
+}
+
+{$APP_DOMAIN} {
+	import access_log
+	reverse_proxy papyrus-app:8080
+}
+
+{$API_DOMAIN} {
+	import access_log
+	reverse_proxy papyrus-api:8080
+}
+
+{$SYNC_DOMAIN} {
+	import access_log
+	reverse_proxy papyrus-sync:8080
+}
+
+monitor.{$WEBSITE_DOMAIN} {
+	import access_log
+	reverse_proxy papyrus-grafana:3000
+}

@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh Papyrus host monitoring once a minute
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
