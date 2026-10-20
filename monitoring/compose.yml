@@ -87,6 +87,8 @@ services:
       - /:/rootfs:ro,rslave
       - /sys:/sys:ro
       - /var/run/docker.sock:/var/run/docker.sock
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock
+      - /var/lib/containerd:/var/lib/containerd:ro
       - /var/lib/docker:/var/lib/docker:ro
       - /dev/disk:/dev/disk:ro
       - /var/lib/papyrus-observability/textfile:/textfile:ro

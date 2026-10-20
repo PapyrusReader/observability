@@ -22,7 +22,9 @@ Application deployment files remain in their component repositories.
 First validate with `python3 tools/check.py`, `python3 -m unittest discover -s tests`,
 `python3 tools/render.py` (must leave no diff), and `python3 tools/smoke.py`.
 The smoke test uses isolated networks, volumes, fake credentials and localhost ports.
-It does not access production databases or send email. Linux collector acceptance
+It does not access production databases or send email. The production collector
+uses Docker's containerd image store, its `moby` namespace, and the host
+`/run/containerd/containerd.sock`. Linux collector acceptance
 must additionally run on the actual Linux host, not the Docker Desktop guest.
 
 1. Deploy the server repository's PowerSync metrics configuration on port 9090.
