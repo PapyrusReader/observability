@@ -51,7 +51,7 @@ def smoke():
         (folder / 'test.alloy').write_text('loki.source.api "test" {\n http { listen_address = "0.0.0.0"\n listen_port = 9091 }\n forward_to = [loki.process.sanitize.receiver]\n}\n' + sanitizer)
         caddy = (ROOT / 'edge/Caddyfile').read_text()
         snippet = caddy[caddy.index('(access_log)'):caddy.index(':9180')]
-        (folder / 'Caddyfile').write_text(snippet + ':8080 {\n import access_log\n respond "ok"\n}\n')
+        (folder / 'Caddyfile').write_text(snippet + ':8080 {\n import access_log\n import private_metrics\n respond "ok"\n}\n')
         config = {'name': 'papyrus-observability-smoke', 'services': {
             'grafana': {'image':images['grafana'],'environment':{'GF_SECURITY_ADMIN_PASSWORD':'smoke-password','GF_USERS_ALLOW_SIGN_UP':'false','GF_AUTH_ANONYMOUS_ENABLED':'false','GF_ANALYTICS_REPORTING_ENABLED':'false','GF_SMTP_ENABLED':'false','ALERT_EMAIL':'smoke@example.invalid'},'ports':['127.0.0.1::3000'],'volumes':['grafana:/var/lib/grafana',str(folder/'grafana/provisioning')+':/etc/grafana/provisioning:ro',str(folder/'grafana/dashboards')+':/var/lib/grafana/dashboards:ro']},
             'prometheus': {'image':images['prometheus'],'command':['--config.file=/etc/prometheus/prometheus.yml','--web.enable-remote-write-receiver'],'ports':['127.0.0.1::9090'],'volumes':[str(folder/'prometheus.yml')+':/etc/prometheus/prometheus.yml:ro','prometheus:/prometheus']},
@@ -106,6 +106,11 @@ def smoke():
                     assert all(secret not in line for line in lines), (secret, lines)
                 return lines
             retry(verify_log)
+            try:
+                request(edge+'/metrics')
+                raise AssertionError('Grafana metrics route is public')
+            except urllib.error.HTTPError as error:
+                assert error.code == 404
             request(edge+'/?token=edge-secret')
             logs = compose('logs','--no-color','caddy',capture=True).stdout
             assert 'edge-secret' not in logs and '"status":200' in logs
