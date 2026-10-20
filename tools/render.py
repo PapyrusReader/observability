@@ -90,10 +90,11 @@ def app_statistics_dashboard():
  def panel(title, expression, unit, x, y, width=12, height=8, kind='timeseries', legend='', description=''):
   result = {'id': len(panels)+1, 'title': title, 'type': kind,
             'description': description, 'datasource': {'type': 'prometheus', 'uid': 'prometheus'},
-            'targets': [{'refId': 'A', 'expr': expression, 'legendFormat': legend, 'instant': kind == 'stat'}],
+            'targets': [{'refId': 'A', 'expr': expression, 'legendFormat': legend, 'instant': kind == 'stat', 'range': kind != 'stat'}],
             'gridPos': {'x': x, 'y': y, 'w': width, 'h': height},
             'fieldConfig': {'defaults': {'unit': unit, 'min': 0}, 'overrides': []}}
   if kind == 'stat':
+   result['fieldConfig']['defaults']['color'] = {'mode': 'fixed', 'fixedColor': 'blue'}
    result['options'] = {'reduceOptions': {'calcs': ['lastNotNull'], 'fields': '', 'values': False},
                         'colorMode': 'value', 'graphMode': 'none'}
   panels.append(result)
@@ -113,6 +114,7 @@ def app_statistics_dashboard():
              description='Time since the last successful collection. Normally under five minutes. Last good values remain visible if collection fails.')
  age['fieldConfig']['defaults']['thresholds'] = {'mode': 'absolute', 'steps': [
      {'color': 'green', 'value': None}, {'color': 'orange', 'value': 600}, {'color': 'red', 'value': 900}]}
+ age['fieldConfig']['defaults']['color'] = {'mode': 'thresholds'}
  health = panel('Latest collection', 'papyrus_app_collection_success', 'short', 16, 4, 8, 4, 'stat')
  health['fieldConfig']['defaults']['mappings'] = [{'type': 'value', 'options': {
      '0': {'text': 'Failed', 'color': 'red'}, '1': {'text': 'Successful', 'color': 'green'}}}]
@@ -128,7 +130,7 @@ def app_statistics_dashboard():
  panel('Cover storage by format', 'sum by(format) (papyrus_app_file_bytes{kind="cover_image"})', 'bytes', 12, 32, legend='{{format}}')
  storage = panel('Uploaded bytes and media disk usage', 'sum(papyrus_app_file_bytes)', 'bytes', 0, 40, legend='Registered file bytes',
                  description='Media disk usage also includes filesystem allocation, in-flight uploads and unregistered files. It is measured separately every ten minutes.')
- storage['targets'].append({'refId': 'B', 'expr': 'papyrus_storage_bytes{kind="media"}', 'legendFormat': 'Media volume disk usage'})
+ storage['targets'].append({'refId': 'B', 'expr': 'papyrus_storage_bytes{kind="media"}', 'legendFormat': 'Media volume disk usage', 'instant': False, 'range': True})
  panel('Average uploaded file size', 'sum(papyrus_app_file_bytes) / clamp_min(sum(papyrus_app_files), 1)', 'bytes', 12, 40,
        legend='Average bytes per file', description='All registered uploads, including covers. Zero when no files are uploaded.')
  return {'uid': 'papyrus-app-statistics', 'title': 'Papyrus / App statistics', 'schemaVersion': 39,
