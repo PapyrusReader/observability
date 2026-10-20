@@ -24,5 +24,6 @@ class AlertExpressionTests(unittest.TestCase):
         ], 'promql_expr_test': cases}]}
         image = json.loads((ROOT / 'images.lock.json').read_text())['prometheus']
         with tempfile.TemporaryDirectory() as directory:
+            Path(directory).chmod(0o755)
             (Path(directory) / 'alerts.yml').write_text(json.dumps(fixture))
             subprocess.run(['docker', 'run', '--rm', '-v', directory + ':/tests:ro', '--entrypoint', '/bin/promtool', image, 'test', 'rules', '/tests/alerts.yml'], check=True)
