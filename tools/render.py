@@ -15,6 +15,7 @@ def container_usage(expression):
 DASHBOARDS = {
  'overview': [
   ('Required service health', 'papyrus_container_healthy', 'short'),
+  ('Monitoring VPN and DNS', 'papyrus_vpn_service_up', 'short'),
   ('Public probes from production', 'probe_success', 'short'),
   ('Requests per second by host', 'sum by(host) (rate(caddy_http_requests_total[5m]))', 'reqps'),
   ('Server errors per second', 'sum by(host) (rate(caddy_http_requests_total{code=~"5.."}[5m])) or (sum by(host) (rate(caddy_http_requests_total[5m])) * 0)', 'reqps'),
@@ -60,6 +61,7 @@ DASHBOARDS = {
 }
 ALERTS = [
  ('probe-failed','Public service probe failed','min(probe_success) < 1','3m','critical'),
+ ('vpn-unavailable','Monitoring VPN or private DNS unavailable','min(papyrus_vpn_service_up) < 1','3m','critical'),
  ('container-unhealthy','Required container unhealthy','papyrus_container_healthy < 1','3m','critical'),
  ('collection-down','Metrics scrape failed','up < 1','3m','critical'),
  ('host-collector-stale','Host collector stale','time() - papyrus_host_collector_timestamp_seconds > 180','1m','critical'),
