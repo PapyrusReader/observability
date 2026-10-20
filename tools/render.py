@@ -65,6 +65,7 @@ ALERTS = [
  ('container-unhealthy','Required container unhealthy','papyrus_container_healthy < 1','3m','critical'),
  ('collection-down','Metrics scrape failed','up < 1','3m','critical'),
  ('host-collector-stale','Host collector stale','time() - papyrus_host_collector_timestamp_seconds > 180','1m','critical'),
+ ('app-statistics-stale','App statistics collection stale','time() - papyrus_app_statistics_timestamp_seconds > 900','1m','warning'),
  ('memory-low','Available host memory below 15%','node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.15','10m','warning'),
  ('memory-critical','Available host memory below 8%','node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.08','5m','critical'),
  ('cpu-high','Sustained high CPU','1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.85','15m','warning'),
@@ -83,6 +84,59 @@ ALERTS = [
 ]
 
 
+def app_statistics_dashboard():
+ panels = []
+
+ def panel(title, expression, unit, x, y, width=12, height=8, kind='timeseries', legend='', description=''):
+  result = {'id': len(panels)+1, 'title': title, 'type': kind,
+            'description': description, 'datasource': {'type': 'prometheus', 'uid': 'prometheus'},
+            'targets': [{'refId': 'A', 'expr': expression, 'legendFormat': legend, 'instant': kind == 'stat'}],
+            'gridPos': {'x': x, 'y': y, 'w': width, 'h': height},
+            'fieldConfig': {'defaults': {'unit': unit, 'min': 0}, 'overrides': []}}
+  if kind == 'stat':
+   result['options'] = {'reduceOptions': {'calcs': ['lastNotNull'], 'fields': '', 'values': False},
+                        'colorMode': 'value', 'graphMode': 'none'}
+  panels.append(result)
+  return result
+
+ panel('Registered users', 'sum(papyrus_app_users)', 'short', 0, 0, 6, 4, 'stat',
+       description='Current accounts, including disabled accounts. Deleted accounts are excluded.')
+ panel('Library entries', 'sum(papyrus_app_books)', 'short', 6, 0, 6, 4, 'stat',
+       description='Synced book records, including physical and metadata-only books. Copies in different libraries count separately.')
+ panel('Uploaded files', 'sum(papyrus_app_files)', 'short', 12, 0, 6, 4, 'stat',
+       description='Current registered media assets: book files and covers. Device-only files are excluded.')
+ panel('Uploaded file bytes', 'sum(papyrus_app_file_bytes)', 'bytes', 18, 0, 6, 4, 'stat',
+       description='Logical sizes of registered uploads, including duplicate copies. Not filesystem disk usage.')
+ panel('Distinct uploaded book contents', 'papyrus_app_distinct_uploaded_contents', 'short', 0, 4, 8, 4, 'stat',
+       description='Distinct valid SHA-256 checksums among uploaded book files. Different formats or editions can count separately. This is not a count of literary works.')
+ age = panel('Statistics age', 'time() - papyrus_app_statistics_timestamp_seconds', 's', 8, 4, 8, 4, 'stat',
+             description='Time since the last successful collection. Normally under five minutes. Last good values remain visible if collection fails.')
+ age['fieldConfig']['defaults']['thresholds'] = {'mode': 'absolute', 'steps': [
+     {'color': 'green', 'value': None}, {'color': 'orange', 'value': 600}, {'color': 'red', 'value': 900}]}
+ health = panel('Latest collection', 'papyrus_app_collection_success', 'short', 16, 4, 8, 4, 'stat')
+ health['fieldConfig']['defaults']['mappings'] = [{'type': 'value', 'options': {
+     '0': {'text': 'Failed', 'color': 'red'}, '1': {'text': 'Successful', 'color': 'green'}}}]
+ panel('Registered users over time', 'papyrus_app_users', 'short', 0, 8, legend='{{status}}',
+       description='Enabled means the account is not disabled. It does not imply recent activity.')
+ panel('Recent registrations', 'papyrus_app_recent_registrations', 'short', 12, 8, legend='Last {{window}}',
+       description='Accounts still present that were created in each trailing window. Deleted accounts are excluded. These are gauges, not lifetime signup counters.')
+ panel('Library entries over time', 'papyrus_app_books', 'short', 0, 16, legend='{{kind}}')
+ panel('Uploaded files by kind', 'sum by(kind) (papyrus_app_files)', 'short', 12, 16, legend='{{kind}}')
+ panel('Book files by format', 'sum by(format) (papyrus_app_files{kind="book_file"})', 'short', 0, 24, legend='{{format}}')
+ panel('Cover images by format', 'sum by(format) (papyrus_app_files{kind="cover_image"})', 'short', 12, 24, legend='{{format}}')
+ panel('Book file storage by format', 'sum by(format) (papyrus_app_file_bytes{kind="book_file"})', 'bytes', 0, 32, legend='{{format}}')
+ panel('Cover storage by format', 'sum by(format) (papyrus_app_file_bytes{kind="cover_image"})', 'bytes', 12, 32, legend='{{format}}')
+ storage = panel('Uploaded bytes and media disk usage', 'sum(papyrus_app_file_bytes)', 'bytes', 0, 40, legend='Registered file bytes',
+                 description='Media disk usage also includes filesystem allocation, in-flight uploads and unregistered files. It is measured separately every ten minutes.')
+ storage['targets'].append({'refId': 'B', 'expr': 'papyrus_storage_bytes{kind="media"}', 'legendFormat': 'Media volume disk usage'})
+ panel('Average uploaded file size', 'sum(papyrus_app_file_bytes) / clamp_min(sum(papyrus_app_files), 1)', 'bytes', 12, 40,
+       legend='Average bytes per file', description='All registered uploads, including covers. Zero when no files are uploaded.')
+ return {'uid': 'papyrus-app-statistics', 'title': 'Papyrus / App statistics', 'schemaVersion': 39,
+         'version': 1, 'editable': False, 'timezone': 'browser', 'refresh': '1m',
+         'time': {'from': 'now-24h', 'to': 'now'}, 'tags': ['Papyrus'], 'panels': panels,
+         'description': 'Server-synced data, collected every five minutes. Guest libraries and device-only data are excluded. Trends begin when collection is enabled. Only aggregate counts and bytes are retained.'}
+
+
 def render():
  for name, definitions in DASHBOARDS.items():
   panels=[]
@@ -91,6 +145,7 @@ def render():
   panels.append({'id':100,'title':'Service logs','type':'logs','datasource':{'type':'loki','uid':'loki'},'targets':[{'refId':'A','expr':'{project=~"papyrus-.+"}'}],'gridPos':{'x':0,'y':((len(definitions)+1)//2)*8,'w':24,'h':10}})
   dashboard={'uid':'papyrus-'+name,'title':'Papyrus / '+name.replace('-',' ').title(),'schemaVersion':39,'version':1,'editable':False,'timezone':'browser','refresh':'30s','time':{'from':'now-6h','to':'now'},'tags':['Papyrus'],'panels':panels,'description':'Production-host probes cannot detect a whole-host outage. HTTP bytes exclude transport overhead. Sync durations represent completed streams. History begins at installation.'}
   (ROOT/'monitoring/grafana/dashboards'/f'{name}.json').write_text(json.dumps(dashboard,indent=2)+'\n')
+ (ROOT/'monitoring/grafana/dashboards/app-statistics.json').write_text(json.dumps(app_statistics_dashboard(),indent=2)+'\n')
  rules=[]
  for uid,title,expr,pending,severity in ALERTS:
   if uid != 'http-errors':

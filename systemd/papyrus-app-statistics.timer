@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh aggregate Papyrus app statistics every five minutes
+
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec=5m
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

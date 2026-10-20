@@ -6,6 +6,8 @@ Run commands from the repository root. Deploy a reviewed `master` revision at
 at `/srv/apps/papyrus-edge`, preserving its project, network, and certificate volumes.
 Grafana requires WireGuard and a login. Other monitoring services have no public ports.
 
+See [App statistics](app-statistics.md) for user, book, file, and storage counts.
+
 ## Installation
 
 First validate with `python3 tools/check.py`, `python3 -m unittest discover -s tests`,
