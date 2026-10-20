@@ -79,7 +79,8 @@ def smoke():
             dashboards = request(grafana+'/api/search?type=dash-db',auth=True)
             assert len(dashboards) == 4, dashboards
             rules = request(grafana+'/api/v1/provisioning/alert-rules',auth=True)
-            assert len(rules) == 17, len(rules)
+            expected_rules = json.loads((folder/'grafana/provisioning/alerting/rules.yml').read_text())['groups'][0]['rules']
+            assert len(rules) == len(expected_rules), len(rules)
             try:
                 request(grafana+'/api/search')
                 raise AssertionError('Grafana permits anonymous API access')
@@ -108,7 +109,7 @@ def smoke():
             request(edge+'/?token=edge-secret')
             logs = compose('logs','--no-color','caddy',capture=True).stdout
             assert 'edge-secret' not in logs and '"status":200' in logs
-            compose('restart','loki','grafana')
+            compose('up','-d','--force-recreate','loki','grafana')
             loki = address('loki',3100)
             grafana = address('grafana',3000)
             retry(lambda: request(loki+'/ready'))

@@ -16,6 +16,34 @@
   "panels": [
     {
       "id": 1,
+      "title": "Database collector connectivity",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "pg_up",
+          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{container_label_com_docker_compose_service}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
       "title": "Database size",
       "type": "timeseries",
       "datasource": {
@@ -30,7 +58,7 @@
         }
       ],
       "gridPos": {
-        "x": 0,
+        "x": 12,
         "y": 0,
         "w": 12,
         "h": 8
@@ -43,7 +71,7 @@
       }
     },
     {
-      "id": 2,
+      "id": 3,
       "title": "Database connections",
       "type": "timeseries",
       "datasource": {
@@ -54,34 +82,6 @@
         {
           "refId": "A",
           "expr": "sum by(server) (pg_stat_database_numbackends)",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{container_label_com_docker_compose_service}}"
-        }
-      ],
-      "gridPos": {
-        "x": 12,
-        "y": 0,
-        "w": 12,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 3,
-      "title": "Database deadlocks",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "increase(pg_stat_database_deadlocks[1h])",
           "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{container_label_com_docker_compose_service}}"
         }
       ],
@@ -100,6 +100,34 @@
     },
     {
       "id": 4,
+      "title": "Database deadlocks",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(pg_stat_database_deadlocks[1h])",
+          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{container_label_com_docker_compose_service}}"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
       "title": "Retained replication WAL",
       "type": "timeseries",
       "datasource": {
@@ -114,8 +142,8 @@
         }
       ],
       "gridPos": {
-        "x": 12,
-        "y": 8,
+        "x": 0,
+        "y": 16,
         "w": 12,
         "h": 8
       },
@@ -127,7 +155,7 @@
       }
     },
     {
-      "id": 5,
+      "id": 6,
       "title": "Replication slot active",
       "type": "timeseries",
       "datasource": {
@@ -138,34 +166,6 @@
         {
           "refId": "A",
           "expr": "papyrus_replication_active",
-          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{container_label_com_docker_compose_service}}"
-        }
-      ],
-      "gridPos": {
-        "x": 0,
-        "y": 16,
-        "w": 12,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      }
-    },
-    {
-      "id": 6,
-      "title": "PowerSync concurrent connections",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "{__name__=~\".*concurrent_connections.*\",job=\"services\"}",
           "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{container_label_com_docker_compose_service}}"
         }
       ],
@@ -184,6 +184,34 @@
     },
     {
       "id": 7,
+      "title": "PowerSync concurrent connections",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{__name__=~\".*concurrent_connections.*\",job=\"services\"}",
+          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{container_label_com_docker_compose_service}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
       "title": "Sync bytes per second",
       "type": "timeseries",
       "datasource": {
@@ -198,7 +226,7 @@
         }
       ],
       "gridPos": {
-        "x": 0,
+        "x": 12,
         "y": 24,
         "w": 12,
         "h": 8
@@ -211,7 +239,7 @@
       }
     },
     {
-      "id": 8,
+      "id": 9,
       "title": "Replicated bytes per second",
       "type": "timeseries",
       "datasource": {
@@ -226,8 +254,8 @@
         }
       ],
       "gridPos": {
-        "x": 12,
-        "y": 24,
+        "x": 0,
+        "y": 32,
         "w": 12,
         "h": 8
       },
@@ -254,7 +282,7 @@
       ],
       "gridPos": {
         "x": 0,
-        "y": 32,
+        "y": 40,
         "w": 24,
         "h": 10
       }
