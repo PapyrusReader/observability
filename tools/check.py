@@ -20,8 +20,8 @@ def main():
     for name, service in config['services'].items():
         assert not service.get('ports'), name
         assert service['image'] == images[name] and '@sha256:' in service['image']
-        assert int(service['mem_limit']) <= 512 * 1024 ** 2
-        assert float(service['cpus']) <= 0.25
+        assert int(service['mem_limit']) <= 768 * 1024 ** 2
+        assert float(service['cpus']) <= 0.5
         assert bool(service.get('privileged')) == (name == 'alloy')
     assert set(config['services']['prometheus']['networks']) == {'monitoring'}
     assert set(config['services']['loki']['networks']) == {'monitoring'}

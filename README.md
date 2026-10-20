@@ -22,7 +22,9 @@ Application deployment files remain in their component repositories.
 First validate with `python3 tools/check.py`, `python3 -m unittest discover -s tests`,
 `python3 tools/render.py` (must leave no diff), and `python3 tools/smoke.py`.
 The smoke test uses isolated networks, volumes, fake credentials and localhost ports.
-It does not access production databases or send email. Linux collector acceptance
+It does not access production databases or send email. The production collector
+uses Docker's containerd image store, its `moby` namespace, and the host
+`/run/containerd/containerd.sock`. Linux collector acceptance
 must additionally run on the actual Linux host, not the Docker Desktop guest.
 
 1. Deploy the server repository's PowerSync metrics configuration on port 9090.
@@ -54,8 +56,9 @@ Do not run the application's full deployment script just to enable monitoring.
 Prometheus retains up to 90 days or 3 GB of blocks, whichever expires first.
 The head and WAL consume additional space. Alloy's metrics WAL retains at most
 one hour. Loki retains 14 days, with bounded ingestion and query concurrency.
-Grafana is capped at 384 MiB, the other services at 512 MiB each. Each is capped
-at 0.25 CPU. Docker continues to rotate local logs at 10 MB times three files.
+Grafana is capped at 768 MiB and 0.5 CPU, with a 512 MiB Go memory target.
+The other services are capped at 512 MiB and 0.25 CPU each.
+Docker continues to rotate local logs at 10 MB times three files.
 These limits must be checked under representative load.
 
 The host collector stops Loki at 6 GiB of Loki data or less than 8 GiB free root

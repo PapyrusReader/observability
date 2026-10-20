@@ -34,7 +34,8 @@ DASHBOARDS = {
   ('Disk read latency', 'rate(node_disk_read_time_seconds_total{device="sda"}[5m]) / clamp_min(rate(node_disk_reads_completed_total{device="sda"}[5m]), 0.001)', 's'),
   ('Disk write latency', 'rate(node_disk_write_time_seconds_total{device="sda"}[5m]) / clamp_min(rate(node_disk_writes_completed_total{device="sda"}[5m]), 0.001)', 's'),
   ('Storage growth', 'papyrus_storage_bytes', 'bytes'),
-  ('Host network receive / transmit', 'rate({__name__=~"papyrus_host_network_(receive|transmit)_bytes_total"}[5m])', 'Bps'),
+  ('Host network receive', 'rate(papyrus_host_network_receive_bytes_total[5m])', 'Bps'),
+  ('Host network transmit', 'rate(papyrus_host_network_transmit_bytes_total[5m])', 'Bps'),
   ('Restarts', 'increase(papyrus_container_restarts_total[1h])', 'short'),
   ('OOM events', 'increase(papyrus_container_oom_total[1h])', 'short'),
   ('Filesystem free inodes', 'node_filesystem_files_free{mountpoint="/"}', 'short'),
@@ -42,7 +43,7 @@ DASHBOARDS = {
  'database-sync': [
   ('Database collector connectivity', 'pg_up', 'short'),
   ('Database size', 'pg_database_size_bytes{datname!~"template.*"}', 'bytes'),
-  ('Database connections', 'sum by(server) (pg_stat_database_numbackends)', 'short'),
+  ('Database connections', 'sum by(instance) (pg_stat_database_numbackends)', 'short'),
   ('Database deadlocks', 'increase(pg_stat_database_deadlocks[1h])', 'short'),
   ('Retained replication WAL', 'papyrus_replication_retained_wal_bytes', 'bytes'),
   ('Replication slot active', 'papyrus_replication_active', 'short'),
@@ -67,7 +68,7 @@ ALERTS = [
  ('http-errors','Elevated HTTP server errors','(sum by(host) (increase(caddy_http_requests_total{code=~"5.."}[10m])) >= 20) and (sum by(host) (rate(caddy_http_requests_total{code=~"5.."}[10m])) / sum by(host) (rate(caddy_http_requests_total[10m])) > 0.05)','5m','critical'),
  ('db-unreachable','Database monitoring connection failed','pg_up < 1','3m','critical'),
  ('replication-inactive','Logical replication slot inactive','papyrus_replication_active < 1','5m','warning'),
- ('db-connections','Database connections above 80%','sum by(server) (pg_stat_database_numbackends) / on(server) pg_settings_max_connections > 0.8','10m','warning'),
+ ('db-connections','Database connections above 80%','sum by(instance) (pg_stat_database_numbackends) / on(instance) pg_settings_max_connections > 0.8','10m','warning'),
  ('wal-retained','Replication retaining over 512 MiB WAL','papyrus_replication_retained_wal_bytes > 536870912','10m','warning'),
  ('tls-expiry','TLS certificate expires within 14 days','probe_ssl_earliest_cert_expiry - time() < 1209600','10m','warning'),
  ('loki-paused','Loki paused by disk guard','papyrus_loki_disk_guard_active > 0','0s','critical'),
@@ -78,7 +79,7 @@ def render():
  for name, definitions in DASHBOARDS.items():
   panels=[]
   for index,(title,expr,unit) in enumerate(definitions):
-   panels.append({'id':index+1,'title':title,'type':'timeseries','datasource':{'type':'prometheus','uid':'prometheus'},'targets':[{'refId':'A','expr':expr,'legendFormat':'{{host}}{{service}}{{kind}}{{server}}{{'+CAD+'}}'}],'gridPos':{'x':(index%2)*12,'y':(index//2)*8,'w':12,'h':8},'fieldConfig':{'defaults':{'unit':unit},'overrides':[]}})
+   panels.append({'id':index+1,'title':title,'type':'timeseries','datasource':{'type':'prometheus','uid':'prometheus'},'targets':[{'refId':'A','expr':expr,'legendFormat':'{{host}}{{service}}{{kind}}{{server}}{{instance}}{{'+CAD+'}}'}],'gridPos':{'x':(index%2)*12,'y':(index//2)*8,'w':12,'h':8},'fieldConfig':{'defaults':{'unit':unit},'overrides':[]}})
   panels.append({'id':100,'title':'Service logs','type':'logs','datasource':{'type':'loki','uid':'loki'},'targets':[{'refId':'A','expr':'{project=~"papyrus-.+"}'}],'gridPos':{'x':0,'y':((len(definitions)+1)//2)*8,'w':24,'h':10}})
   dashboard={'uid':'papyrus-'+name,'title':'Papyrus / '+name.replace('-',' ').title(),'schemaVersion':39,'version':1,'editable':False,'timezone':'browser','refresh':'30s','time':{'from':'now-6h','to':'now'},'tags':['Papyrus'],'panels':panels,'description':'Production-host probes cannot detect a whole-host outage. HTTP bytes exclude transport overhead. Sync durations represent completed streams. History begins at installation.'}
   (ROOT/'monitoring/grafana/dashboards'/f'{name}.json').write_text(json.dumps(dashboard,indent=2)+'\n')

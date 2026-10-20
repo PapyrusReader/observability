@@ -13,8 +13,10 @@ services:
   grafana:
     <<: *service
     image: grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
-    mem_limit: 384m
+    mem_limit: 768m
+    cpus: 0.5
     environment:
+      GOMEMLIMIT: 512MiB
       GF_SERVER_ROOT_URL: https://${GRAFANA_DOMAIN:?Set GRAFANA_DOMAIN}
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
@@ -87,6 +89,8 @@ services:
       - /:/rootfs:ro,rslave
       - /sys:/sys:ro
       - /var/run/docker.sock:/var/run/docker.sock
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock
+      - /var/lib/containerd:/var/lib/containerd:ro
       - /var/lib/docker:/var/lib/docker:ro
       - /dev/disk:/dev/disk:ro
       - /var/lib/papyrus-observability/textfile:/textfile:ro

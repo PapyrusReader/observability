@@ -976,7 +976,7 @@
               "datasourceUid": "prometheus",
               "model": {
                 "refId": "A",
-                "expr": "sum by(server) (pg_stat_database_numbackends) / on(server) pg_settings_max_connections > bool 0.8",
+                "expr": "sum by(instance) (pg_stat_database_numbackends) / on(instance) pg_settings_max_connections > bool 0.8",
                 "instant": true,
                 "intervalMs": 1000,
                 "maxDataPoints": 43200
