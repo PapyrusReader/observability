@@ -17,7 +17,7 @@ DASHBOARDS = {
   ('Required service health', 'papyrus_container_healthy', 'short'),
   ('Public probes from production', 'probe_success', 'short'),
   ('Requests per second by host', 'sum by(host) (rate(caddy_http_requests_total[5m]))', 'reqps'),
-  ('Server errors per second', 'sum by(host) (rate(caddy_http_requests_total{code=~"5.."}[5m]))', 'reqps'),
+  ('Server errors per second', 'sum by(host) (rate(caddy_http_requests_total{code=~"5.."}[5m])) or (sum by(host) (rate(caddy_http_requests_total[5m])) * 0)', 'reqps'),
   ('Available host memory', 'node_memory_MemAvailable_bytes', 'bytes'),
   ('Root filesystem available', 'papyrus_root_available_bytes', 'bytes'),
   ('Collector and service scrapes', 'up', 'short'),
@@ -85,7 +85,7 @@ def render():
  for name, definitions in DASHBOARDS.items():
   panels=[]
   for index,(title,expr,unit) in enumerate(definitions):
-   panels.append({'id':index+1,'title':title,'type':'timeseries','datasource':{'type':'prometheus','uid':'prometheus'},'targets':[{'refId':'A','expr':expr,'legendFormat':'{{host}}{{service}}{{kind}}{{server}}{{instance}}{{'+CAD+'}}'}],'gridPos':{'x':(index%2)*12,'y':(index//2)*8,'w':12,'h':8},'fieldConfig':{'defaults':{'unit':unit},'overrides':[]}})
+   panels.append({'id':index+1,'title':title,'type':'timeseries','datasource':{'type':'prometheus','uid':'prometheus'},'targets':[{'refId':'A','expr':expr,'legendFormat':'{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}'}],'gridPos':{'x':(index%2)*12,'y':(index//2)*8,'w':12,'h':8},'fieldConfig':{'defaults':{'unit':unit},'overrides':[]}})
   panels.append({'id':100,'title':'Service logs','type':'logs','datasource':{'type':'loki','uid':'loki'},'targets':[{'refId':'A','expr':'{project=~"papyrus-.+"}'}],'gridPos':{'x':0,'y':((len(definitions)+1)//2)*8,'w':24,'h':10}})
   dashboard={'uid':'papyrus-'+name,'title':'Papyrus / '+name.replace('-',' ').title(),'schemaVersion':39,'version':1,'editable':False,'timezone':'browser','refresh':'30s','time':{'from':'now-6h','to':'now'},'tags':['Papyrus'],'panels':panels,'description':'Production-host probes cannot detect a whole-host outage. HTTP bytes exclude transport overhead. Sync durations represent completed streams. History begins at installation.'}
   (ROOT/'monitoring/grafana/dashboards'/f'{name}.json').write_text(json.dumps(dashboard,indent=2)+'\n')
