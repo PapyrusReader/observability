@@ -240,7 +240,7 @@
     },
     {
       "id": 9,
-      "title": "Host network receive / transmit",
+      "title": "Host network receive",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -249,7 +249,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate({__name__=~\"papyrus_host_network_(receive|transmit)_bytes_total\"}[5m])",
+          "expr": "rate(papyrus_host_network_receive_bytes_total[5m])",
           "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
         }
       ],
@@ -268,7 +268,7 @@
     },
     {
       "id": 10,
-      "title": "Restarts",
+      "title": "Host network transmit",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -277,7 +277,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "increase(papyrus_container_restarts_total[1h])",
+          "expr": "rate(papyrus_host_network_transmit_bytes_total[5m])",
           "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
         }
       ],
@@ -289,14 +289,14 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "Bps"
         },
         "overrides": []
       }
     },
     {
       "id": 11,
-      "title": "OOM events",
+      "title": "Restarts",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -305,7 +305,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "increase(papyrus_container_oom_total[1h])",
+          "expr": "increase(papyrus_container_restarts_total[1h])",
           "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
         }
       ],
@@ -324,6 +324,34 @@
     },
     {
       "id": 12,
+      "title": "OOM events",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(papyrus_container_oom_total[1h])",
+          "legendFormat": "{{host}}{{service}}{{kind}}{{server}}{{instance}}{{container_label_com_docker_compose_service}}"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
       "title": "Filesystem free inodes",
       "type": "timeseries",
       "datasource": {
@@ -338,8 +366,8 @@
         }
       ],
       "gridPos": {
-        "x": 12,
-        "y": 40,
+        "x": 0,
+        "y": 48,
         "w": 12,
         "h": 8
       },
@@ -366,7 +394,7 @@
       ],
       "gridPos": {
         "x": 0,
-        "y": 48,
+        "y": 56,
         "w": 24,
         "h": 10
       }
