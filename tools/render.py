@@ -135,7 +135,7 @@ def app_statistics_dashboard():
        legend='Average bytes per file', description='All registered uploads, including covers. Zero when no files are uploaded.')
  return {'uid': 'papyrus-app-statistics', 'title': 'Papyrus / App statistics', 'schemaVersion': 39,
          'version': 1, 'editable': False, 'timezone': 'browser', 'refresh': '1m',
-         'time': {'from': 'now-24h', 'to': 'now'}, 'tags': ['Papyrus'], 'panels': panels,
+         'time': {'from': 'now-6h', 'to': 'now'}, 'tags': ['Papyrus'], 'panels': panels,
          'description': 'Server-synced data, collected every five minutes. Guest libraries and device-only data are excluded. Trends begin when collection is enabled. Only aggregate counts and bytes are retained.'}
 
 
