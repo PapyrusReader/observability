@@ -1,0 +1,20 @@
+[Unit]
+Description=Private dashboard DNS for WireGuard peers
+Requires=wg-quick@wgmonitor.service
+After=wg-quick@wgmonitor.service systemd-resolved.service
+PartOf=wg-quick@wgmonitor.service
+
+[Service]
+Type=simple
+RuntimeDirectory=papyrus-vpn-dns
+ExecStartPre=/usr/sbin/dnsmasq --test --conf-file=/srv/apps/papyrus-observability/vpn/dnsmasq.conf
+ExecStart=/usr/sbin/dnsmasq --keep-in-foreground --conf-file=/srv/apps/papyrus-observability/vpn/dnsmasq.conf
+Restart=on-failure
+RestartSec=5
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=wg-quick@wgmonitor.service

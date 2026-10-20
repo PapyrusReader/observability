@@ -29,6 +29,11 @@
 	respond @private_metrics 404
 }
 
+(vpn_only) {
+	@outside_vpn not remote_ip 10.77.0.0/24
+	respond @outside_vpn 404
+}
+
 :9180 {
 	metrics /metrics
 }
@@ -60,6 +65,7 @@ www.{$WEBSITE_DOMAIN} {
 
 monitor.{$WEBSITE_DOMAIN} {
 	import access_log
+	import vpn_only
 	import private_metrics
 	reverse_proxy papyrus-grafana:3000
 }

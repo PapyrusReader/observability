@@ -42,5 +42,9 @@ scheduled monitor. The edge does not enable cross-origin browser health checks.
 This configuration is owned by `PapyrusReader/observability`. Keep its deployment
 at `/srv/apps/papyrus-edge`. Port 9180 serves metrics only on the Docker network;
 there is no published host port or public route. `monitor.<WEBSITE_DOMAIN>` routes
-to authenticated Grafana. The Caddy admin listener remains on container loopback.
+to authenticated Grafana only for actual WireGuard peer addresses in
+`10.77.0.0/24`. Public requests, including forged forwarding headers, receive 404.
+The private VPN resolver maps this hostname to `10.77.0.1`. Keep the public DNS
+record DNS-only for certificate validation. See `../vpn/README.md` before changing
+this route. The Caddy admin listener remains on container loopback.
 Access logs omit request URLs, addresses, and headers before Docker stores them.

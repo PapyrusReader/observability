@@ -75,6 +75,9 @@ def collect(resume=False):
     containers = json.loads(run('docker', 'inspect', *ids)) if ids else []
     current = observations(containers, previous)
     metrics = []
+    for service in ['wg-quick@wgmonitor.service', 'papyrus-vpn-dns.service']:
+        active = subprocess.run(['systemctl', 'is-active', '--quiet', service], check=False).returncode == 0
+        metrics.append(f'papyrus_vpn_service_up{{service="{service}"}} {int(active)}')
     for project, services in EXPECTED.items():
         for service in services:
             state = current.get(project + '/' + service, {})

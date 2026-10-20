@@ -12,8 +12,9 @@ Application deployment files remain in their component repositories.
   the `papyrus-edge` project, network, and certificate volumes.
 - This repository installs at `/srv/apps/papyrus-observability`. Its independent
   Compose project is `papyrus-observability`, with persistent named volumes.
-- Grafana is at `https://monitor.papyrus-reader.com`. DNS points directly to the
-  existing host. Login is required. The other monitoring services have no public ports.
+- Grafana is at `https://monitor.papyrus-reader.com`, accessible only through
+  WireGuard. Login is still required. See [VPN setup and recovery](vpn/README.md).
+  The other monitoring services have no public ports.
 - The four dashboards cover overview, traffic, resources, and database/sync.
   Grafana manages email alerts. Dashboard and alert changes belong in Git.
 
@@ -40,7 +41,7 @@ must additionally run on the actual Linux host, not the Docker Desktop guest.
 5. Install the units in `systemd/` into `/etc/systemd/system`, then run
    `systemctl daemon-reload` and `systemctl enable --now papyrus-observability.timer`.
    Run `systemctl start papyrus-observability.service` for initial measurements.
-6. Copy the new edge Caddyfile into the existing bind-mounted file, preserving its
+6. Install and verify WireGuard using `vpn/README.md`. Copy the new edge Caddyfile into the existing bind-mounted file, preserving its
    inode. Validate and reload using the commands in `edge/README.md`. The proxy's
    Compose name, volumes and production directory must not change.
 7. Verify DNS, TLS, authenticated dashboards, private endpoint isolation, alert

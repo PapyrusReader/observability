@@ -6,5 +6,6 @@ Keep image tags and digests pinned. Preserve project names, networks, volumes,
 and the existing edge installation directory. Never log secrets or commit .env.
 Run python3 tools/check.py and python3 -m unittest discover -s tests.
 Validate Linux host collectors on Linux, not the Docker Desktop guest.
-Only edge publishes ports. Grafana is the only publicly routed monitoring service.
+Only edge publishes Docker ports. Grafana requires WireGuard, including its login
+page. The host exposes WireGuard UDP 51820. Preserve peer keys and private profiles.
 Use isolated disposable databases in tests. Never reset production data.
