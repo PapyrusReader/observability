@@ -10,6 +10,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from app_statistics import collect
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -45,19 +46,27 @@ def smoke():
         folder = Path(directory)
         shutil.copytree(ROOT / 'monitoring/grafana', folder / 'grafana')
         shutil.copy(ROOT / 'monitoring/loki.yml', folder / 'loki.yml')
-        (folder / 'prometheus.yml').write_text('global:\n  scrape_interval: 1s\nscrape_configs:\n  - job_name: self\n    static_configs:\n      - targets: ["prometheus:9090"]\n')
+        (folder / 'prometheus.yml').write_text('global:\n  scrape_interval: 1s\nscrape_configs:\n  - job_name: self\n    static_configs:\n      - targets: ["prometheus:9090"]\n  - job_name: app-statistics\n    metrics_path: /app-statistics.prom\n    static_configs:\n      - targets: ["caddy:8080"]\n')
+        statistics = folder / 'metrics/app-statistics.prom'
+        collect(statistics, lambda: {'users': {'enabled': 4, 'disabled': 1},
+                'registrations': {'24h': 1, '7d': 2, '30d': 3}, 'books': {'digital': 6, 'physical': 1},
+                'distinct_uploaded_contents': 2,
+                'files': [{'kind': 'book_file', 'format': 'epub', 'files': 2, 'bytes': 1000},
+                          {'kind': 'cover_image', 'format': 'jpg', 'files': 1, 'bytes': 100}]})
+        with statistics.open('a') as stream:
+            stream.write('papyrus_storage_bytes{kind="media"} 4096\n')
         alloy = (ROOT / 'monitoring/config.alloy').read_text()
         sanitizer = alloy[alloy.index('loki.process "sanitize"'):]
         (folder / 'test.alloy').write_text('loki.source.api "test" {\n http { listen_address = "0.0.0.0"\n listen_port = 9091 }\n forward_to = [loki.process.sanitize.receiver]\n}\n' + sanitizer)
         caddy = (ROOT / 'edge/Caddyfile').read_text()
         snippet = caddy[caddy.index('(access_log)'):caddy.index(':9180')]
-        (folder / 'Caddyfile').write_text(snippet + ':8080 {\n import access_log\n route {\n import private_metrics\n handle /vpn-test* {\n import vpn_only\n respond "vpn-ok"\n }\n handle {\n respond "ok"\n }\n }\n}\n')
+        (folder / 'Caddyfile').write_text(snippet + ':8080 {\n import access_log\n route {\n import private_metrics\n handle /vpn-test* {\n import vpn_only\n respond "vpn-ok"\n }\n handle /app-statistics.prom {\n header Content-Type "text/plain; version=0.0.4"\n root * /srv/fixtures\n file_server\n }\n handle {\n respond "ok"\n }\n }\n}\n')
         config = {'name': 'papyrus-observability-smoke', 'services': {
             'grafana': {'image':images['grafana'],'environment':{'GF_SECURITY_ADMIN_PASSWORD':'smoke-password','GF_USERS_ALLOW_SIGN_UP':'false','GF_AUTH_ANONYMOUS_ENABLED':'false','GF_ANALYTICS_REPORTING_ENABLED':'false','GF_SMTP_ENABLED':'false','ALERT_EMAIL':'smoke@example.invalid'},'ports':['127.0.0.1::3000'],'volumes':['grafana:/var/lib/grafana',str(folder/'grafana/provisioning')+':/etc/grafana/provisioning:ro',str(folder/'grafana/dashboards')+':/var/lib/grafana/dashboards:ro']},
             'prometheus': {'image':images['prometheus'],'command':['--config.file=/etc/prometheus/prometheus.yml','--web.enable-remote-write-receiver'],'ports':['127.0.0.1::9090'],'volumes':[str(folder/'prometheus.yml')+':/etc/prometheus/prometheus.yml:ro','prometheus:/prometheus']},
             'loki': {'image':images['loki'],'command':['-config.file=/etc/loki/config.yml'],'ports':['127.0.0.1::3100'],'volumes':[str(folder/'loki.yml')+':/etc/loki/config.yml:ro','loki:/loki']},
             'alloy': {'image':images['alloy'],'command':['run','--disable-reporting','--storage.path=/var/lib/alloy','/etc/alloy/config.alloy'],'ports':['127.0.0.1::9091'],'volumes':[str(folder/'test.alloy')+':/etc/alloy/config.alloy:ro','alloy:/var/lib/alloy']},
-            'caddy': {'image':'caddy:2.10.2-alpine','ports':['127.0.0.1::8080'],'volumes':[str(folder/'Caddyfile')+':/etc/caddy/Caddyfile:ro']},
+            'caddy': {'image':'caddy:2.10.2-alpine','ports':['127.0.0.1::8080'],'volumes':[str(folder/'Caddyfile')+':/etc/caddy/Caddyfile:ro',str(folder/'metrics')+':/srv/fixtures:ro']},
         }, 'volumes':{name:{} for name in ['grafana','prometheus','loki','alloy']}}
         compose_file = folder / 'compose.json'
         compose_file.write_text(json.dumps(config))
@@ -77,7 +86,8 @@ def smoke():
             retry(lambda: request(prometheus+'/-/ready'))
             retry(lambda: request(loki+'/ready'))
             dashboards = request(grafana+'/api/search?type=dash-db',auth=True)
-            assert len(dashboards) == 4, dashboards
+            expected_dashboards = len(list((folder/'grafana/dashboards').glob('*.json')))
+            assert len(dashboards) == expected_dashboards, dashboards
             rules = request(grafana+'/api/v1/provisioning/alert-rules',auth=True)
             expected_rules = json.loads((folder/'grafana/provisioning/alerting/rules.yml').read_text())['groups'][0]['rules']
             assert len(rules) == len(expected_rules), len(rules)
@@ -90,8 +100,18 @@ def smoke():
                 for panel in json.loads(dashboard.read_text())['panels']:
                     if panel['type'] == 'logs':
                         continue
-                    query = panel['targets'][0]['expr'].replace('$__range','1h')
-                    assert request(prometheus+'/api/v1/query?'+urllib.parse.urlencode({'query':query}))['status'] == 'success'
+                    for target in panel['targets']:
+                        query = target['expr'].replace('$__range','1h')
+                        def verify_query():
+                            result = request(prometheus+'/api/v1/query?'+urllib.parse.urlencode({'query':query}))
+                            assert result['status'] == 'success'
+                            if dashboard.stem == 'app-statistics':
+                                assert result['data']['result'], (panel['title'], query)
+                        retry(verify_query)
+            for expression, expected in [('sum(papyrus_app_users)', 5), ('sum(papyrus_app_books)', 7),
+                                         ('sum(papyrus_app_files)', 3), ('sum(papyrus_app_file_bytes)', 1100)]:
+                result = request(prometheus+'/api/v1/query?'+urllib.parse.urlencode({'query':expression}))
+                assert float(result['data']['result'][0]['value'][1]) == expected
             for rule in rules:
                 expression = rule['data'][0]['model']['expr']
                 assert request(prometheus+'/api/v1/query?'+urllib.parse.urlencode({'query':expression}))['status'] == 'success'
@@ -126,7 +146,7 @@ def smoke():
             retry(lambda: request(loki+'/ready'))
             retry(verify_log)
             retry(lambda: request(grafana+'/api/health'))
-            assert len(request(grafana+'/api/search?type=dash-db',auth=True)) == 4
+            assert len(request(grafana+'/api/search?type=dash-db',auth=True)) == expected_dashboards
             print('PASS: provisioning, private access, PromQL, actual redaction, Caddy sanitization, and persistence.')
         except Exception:
             print(compose('logs','--tail','40','--no-color',capture=True).stdout)

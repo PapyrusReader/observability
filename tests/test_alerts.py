@@ -36,6 +36,13 @@ class AlertExpressionTests(unittest.TestCase):
             {'labels': f'{{id="/system.slice/docker-{identifier}.scope",container_id="{identifier}",project="papyrus-production",service="api"}}', 'value': 100},
         ]}]})
         image = json.loads((ROOT / 'images.lock.json').read_text())['prometheus']
+        fixture['tests'].append({'interval': '1m', 'input_series': [
+            {'series': 'papyrus_app_statistics_timestamp_seconds', 'values': '0+0x20 1260'},
+        ], 'promql_expr_test': [
+            {'expr': rules['papyrus-app-statistics-stale'], 'eval_time': f'{minute}m',
+             'exp_samples': [{'labels': '{}', 'value': value}]}
+            for minute, value in [(0, 0), (16, 1), (21, 0)]
+        ]})
         with tempfile.TemporaryDirectory() as directory:
             Path(directory).chmod(0o755)
             (Path(directory) / 'alerts.yml').write_text(json.dumps(fixture))
