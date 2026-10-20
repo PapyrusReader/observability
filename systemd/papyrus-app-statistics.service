@@ -1,0 +1,12 @@
+[Unit]
+Description=Collect aggregate Papyrus app statistics
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /srv/apps/papyrus-observability/tools/app_statistics.py
+TimeoutStartSec=25
+Nice=10
+IOSchedulingClass=idle
+UMask=0022
