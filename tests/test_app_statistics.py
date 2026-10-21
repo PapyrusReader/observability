@@ -51,31 +51,46 @@ class CollectionTests(unittest.TestCase):
 
 
 class DatabaseStatisticsTests(unittest.TestCase):
+    """Exercise collection after a deliberately slow PostgreSQL initialization."""
+
     @classmethod
     def setUpClass(cls):
         cls.container = 'papyrus-app-statistics-test-' + uuid.uuid4().hex[:12]
-        cls.addClassCleanup(subprocess.run, ['docker', 'rm', '-f', cls.container],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
-        image = 'postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73'
-        subprocess.run(['docker', 'run', '-d', '--name', cls.container, '--network', 'none',
-                        '--tmpfs', '/var/lib/postgresql/data', '-e', 'POSTGRES_HOST_AUTH_METHOD=trust',
-                        image], check=True, stdout=subprocess.DEVNULL)
-        deadline = time.monotonic() + 60
-        while subprocess.run(['docker', 'exec', cls.container, 'pg_isready', '-U', 'postgres'],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
-            if time.monotonic() > deadline:
-                raise RuntimeError('Disposable database did not start')
-            time.sleep(1)
-        cls.command = ['docker', 'exec', '-i', cls.container, 'psql', '-XqAt', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres']
-        cls.sql('''
+        directory = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(directory.cleanup)
+        init_directory = Path(directory.name)
+        init_directory.chmod(0o755)
+        init_script = init_directory / 'init.sql'
+        init_script.write_text('''
+            SELECT pg_sleep(3);
             CREATE TABLE users (user_id integer PRIMARY KEY, disabled_at timestamptz, created_at timestamptz);
             CREATE TABLE books (book_id integer PRIMARY KEY, owner_user_id integer REFERENCES users ON DELETE CASCADE, is_physical boolean NOT NULL);
             CREATE TABLE media_assets (book_id integer REFERENCES books ON DELETE CASCADE, kind text, extension text, size_bytes integer, sha256 text);
         ''')
+        init_script.chmod(0o644)
+        cls.addClassCleanup(subprocess.run, ['docker', 'rm', '-f', cls.container],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        image = 'postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73'
+        subprocess.run(['docker', 'run', '-d', '--name', cls.container, '--network', 'none',
+                        '-v', f'{init_script}:/docker-entrypoint-initdb.d/init.sql:ro',
+                        '--tmpfs', '/var/lib/postgresql/data', '-e', 'POSTGRES_HOST_AUTH_METHOD=trust',
+                        image], check=True, stdout=subprocess.DEVNULL)
+        deadline = time.monotonic() + 60
+        while subprocess.run(['docker', 'exec', cls.container, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres'],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode:
+            if time.monotonic() > deadline:
+                raise RuntimeError('Disposable database did not start')
+            time.sleep(1)
+        cls.command = ['docker', 'exec', '-i', cls.container, 'psql', '-h', '127.0.0.1',
+                       '-XqAt', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres']
+        cls.sql('SELECT count(*) FROM users;')
 
     @classmethod
     def sql(cls, text):
-        return subprocess.run(cls.command, input=text, check=True, capture_output=True, text=True).stdout
+        try:
+            return subprocess.run(cls.command, input=text, check=True, capture_output=True, text=True).stdout
+        except subprocess.CalledProcessError as error:
+            raise RuntimeError(f'Disposable database SQL failed: {error.stderr.strip()}') from error
 
     def setUp(self):
         self.sql('TRUNCATE users, books, media_assets;')

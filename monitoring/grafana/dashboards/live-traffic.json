@@ -1,0 +1,481 @@
+{
+  "uid": "papyrus-live-traffic",
+  "title": "Papyrus / Live traffic",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "tags": [
+    "Papyrus"
+  ],
+  "description": "Origin HTTPS traffic, sampled every five seconds. Includes bots, health probes and background requests, excludes monitoring and HTTP redirects. Not a visitor count. Cloudflare/browser cache hits do not reach the origin. Long-lived streams appear in completed metrics and logs when they close.",
+  "templating": {
+    "list": [
+      {
+        "name": "host",
+        "label": "Subdomain",
+        "type": "custom",
+        "query": "papyrus-reader.com,www.papyrus-reader.com,app.papyrus-reader.com,api.papyrus-reader.com,sync.papyrus-reader.com",
+        "multi": true,
+        "includeAll": true,
+        "allValue": "((www|app|api|sync)[.])?papyrus-reader[.]com(:443)?",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": []
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Stream requests (Explore \u2192 Live)",
+      "type": "link",
+      "url": "/explore?schemaVersion=1&panes=%7B%22live%22%3A%7B%22datasource%22%3A%22loki%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22%7Bproject%3D%5C%22papyrus-edge%5C%22%2Cservice_name%3D%5C%22proxy%5C%22%7D+%7C+json+%7C+__error__%3D%5C%22%5C%22+%7C+logger%3D~%5C%22http%5B.%5Dlog%5B.%5Daccess%5B.%5D.%2A%5C%22+%7C+request_host%3D~%5C%22%28%28www%7Capp%7Capi%7Csync%29%5B.%5D%29%3Fpapyrus-reader%5B.%5Dcom%28%3A443%29%3F%5C%22+%7C+line_format+%5C%22%7B%7B.request_method%7D%7D+%7B%7B.request_host%7D%7D+%5Cu00b7+%7B%7B.status%7D%7D+%5Cu00b7+%7B%7B.duration%7D%7D+s+%5Cu00b7+%7B%7B.size%7D%7D+bytes%5C%22%22%2C%22queryType%22%3A%22range%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22now-15m%22%2C%22to%22%3A%22now%22%7D%7D%7D",
+      "targetBlank": true
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Requests in the last minute",
+      "description": "Estimated completed HTTPS requests, including bots, probes and background sync. These are not visitors.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m]))",
+          "legendFormat": "{{host}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Response bytes in the last minute",
+      "description": "HTTP response bytes for completed requests. Open sync streams are accounted for when they close.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(caddy_http_response_size_bytes_sum{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m]))",
+          "legendFormat": "{{host}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Requests in flight",
+      "description": "Requests being handled at the latest sample, including open sync connections. These are not users.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(caddy_http_requests_in_flight{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"})",
+          "legendFormat": "{{host}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Server errors in the last minute",
+      "description": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\",code=~\"5..\"}[1m])) or (sum(increase(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m])) * 0)",
+          "legendFormat": "{{host}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Completed requests per second",
+      "description": "",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(host) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m]))",
+          "legendFormat": "{{host}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 6,
+      "title": "Response bytes per second",
+      "description": "",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(host) (rate(caddy_http_response_size_bytes_sum{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m]))",
+          "legendFormat": "{{host}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 7,
+      "title": "Responses by status",
+      "description": "",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(host,code) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m]))",
+          "legendFormat": "{{host}} \u00b7 {{code}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 8,
+      "title": "P95 duration, excluding sync",
+      "description": "Completed requests only. No duration is shown while a host has no recent requests. Sync streams are excluded.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by(le,host) (rate(caddy_http_request_duration_seconds_bucket{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\",host!~\"sync[.]papyrus-reader[.]com(:443)?\"}[1m])))",
+          "legendFormat": "{{host}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 9,
+      "title": "Server errors per second",
+      "description": "",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(host) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\",code=~\"5..\"}[1m])) or (sum by(host) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m])) * 0)",
+          "legendFormat": "{{host}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 10,
+      "title": "Caddy sample age",
+      "description": "Age of the latest scrape, independent of the host filter. Normal sampling interval is five seconds.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - timestamp(up{job=\"services\",service=\"edge\"})",
+          "legendFormat": "{{host}}",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 11,
+      "title": "Recent completed requests",
+      "type": "logs",
+      "description": "Newest 100 sanitized access logs, refreshed every five seconds. Use the streaming link and click Live for continuous logs. No URLs, IPs, headers or reading content are collected.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{project=\"papyrus-edge\",service_name=\"proxy\"} | json | __error__=\"\" | logger=~\"http[.]log[.]access[.].*\" | request_host=~\"${host:regex}\" | line_format \"{{.request_method}} {{.request_host}} \u00b7 {{.status}} \u00b7 {{.duration}} s \u00b7 {{.size}} bytes\"",
+          "queryType": "range",
+          "maxLines": 100
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 12
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "enableLogDetails": false
+      }
+    }
+  ]
+}

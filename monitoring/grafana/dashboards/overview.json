@@ -100,7 +100,7 @@
     },
     {
       "id": 4,
-      "title": "Requests per second by host",
+      "title": "Completed HTTPS requests per second by host",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -109,7 +109,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host) (rate(caddy_http_requests_total[5m]))",
+          "expr": "sum by(host) (rate(caddy_http_request_duration_seconds_count{handler=\"subroute\"}[5m]))",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
@@ -137,7 +137,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host) (rate(caddy_http_requests_total{code=~\"5..\"}[5m])) or (sum by(host) (rate(caddy_http_requests_total[5m])) * 0)",
+          "expr": "sum by(host) (rate(caddy_http_request_duration_seconds_count{handler=\"subroute\",code=~\"5..\"}[5m])) or (sum by(host) (rate(caddy_http_request_duration_seconds_count{handler=\"subroute\"}[5m])) * 0)",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],

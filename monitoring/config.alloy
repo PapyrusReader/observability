@@ -77,10 +77,16 @@ prometheus.scrape "databases" {
 }
 prometheus.scrape "services" {
   targets = [
-    {"__address__" = "proxy:9180", "service" = "edge"},
     {"__address__" = "papyrus-sync:9090", "service" = "powersync"},
   ]
   scrape_interval = "30s"
+  job_name = "services"
+  forward_to = [prometheus.remote_write.local.receiver]
+}
+prometheus.scrape "edge" {
+  targets = [{"__address__" = "proxy:9180", "service" = "edge"}]
+  scrape_interval = "5s"
+  scrape_timeout = "4s"
   job_name = "services"
   forward_to = [prometheus.remote_write.local.receiver]
 }
