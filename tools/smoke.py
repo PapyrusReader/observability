@@ -149,7 +149,7 @@ http://papyrus-reader.com:8080 {
                                 payload = {'from': str(int(time.time()*1000)-3600000), 'to': str(int(time.time()*1000)),
                                            'queries': [{**target, 'expr': query, 'datasource': panel['datasource'], 'intervalMs': 1000, 'maxDataPoints': 1000}]}
                                 result = request(grafana+'/api/ds/query', payload, auth=True)['results'][target['refId']]
-                                assert any(frame.get('data', {}).get('values', [[]])[0] for frame in result.get('frames', [])), panel['title']
+                                assert any((frame.get('data', {}).get('values') or [[]])[0] for frame in result.get('frames', [])), panel['title']
                             retry(verify_grafana_query)
             for expression, expected in [('sum(papyrus_app_users)', 5), ('sum(papyrus_app_books)', 7),
                                          ('sum(papyrus_app_files)', 3), ('sum(papyrus_app_file_bytes)', 1100)]:
