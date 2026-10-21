@@ -11,7 +11,8 @@ PUBLIC_HOSTS = '((www|app|api|sync)[.])?papyrus-reader[.]com(:443)?'
 
 
 def live_traffic_dashboard():
- selector = 'job="services",handler="subroute",host=~"${host:regex}"'
+ # Keep data-source interpolation: generic :regex does not escape PromQL string literals.
+ selector = 'job="services",handler="subroute",host=~"${host}"'
  count = 'caddy_http_request_duration_seconds_count{' + selector + '}'
  errors = 'caddy_http_request_duration_seconds_count{' + selector + ',code=~"5.."}'
  bandwidth = 'caddy_http_response_size_bytes_sum{' + selector + '}'
@@ -37,13 +38,13 @@ def live_traffic_dashboard():
  panel('P95 duration, excluding sync', 'histogram_quantile(0.95, sum by(le,host) (rate(caddy_http_request_duration_seconds_bucket{' + selector + ',host!~"sync[.]papyrus-reader[.]com(:443)?"}[1m])))', 's', 12, 12, description='Completed requests only. No duration is shown while a host has no recent requests. Sync streams are excluded.')
  panel('Server errors per second', error_rate, 'reqps', 0, 20)
  panel('Caddy sample age', 'time() - timestamp(up{job="services",service="edge"})', 's', 12, 20, description='Age of the latest scrape, independent of the host filter. Normal sampling interval is five seconds.')
- log_query = '{project="papyrus-edge",service_name="proxy"} | json | __error__="" | logger=~"http[.]log[.]access[.].*" | request_host=~"${host:regex}" | line_format "{{.request_method}} {{.request_host}} · {{.status}} · {{.duration}} s · {{.size}} bytes"'
+ log_query = '{project="papyrus-edge",service_name="proxy"} | json | __error__="" | logger=~"http[.]log[.]access[.].*" | request_host=~"${host}" | line_format "{{.request_method}} {{.request_host}} · {{.status}} · {{.duration}} s · {{.size}} bytes"'
  panels.append({'id': len(panels)+1, 'title': 'Recent completed requests', 'type': 'logs',
   'description': 'Newest 100 sanitized access logs, refreshed every five seconds. Use the streaming link and click Live for continuous logs. No URLs, IPs, headers or reading content are collected.',
   'datasource': {'type': 'loki', 'uid': 'loki'}, 'targets': [{'refId': 'A', 'expr': log_query, 'queryType': 'range', 'maxLines': 100}],
   'gridPos': {'x': 0, 'y': 28, 'w': 24, 'h': 12},
   'options': {'showTime': True, 'showLabels': False, 'wrapLogMessage': True, 'sortOrder': 'Descending', 'enableLogDetails': False}})
- explore = {'live': {'datasource': 'loki', 'queries': [{'refId': 'A', 'expr': log_query.replace('${host:regex}', PUBLIC_HOSTS), 'queryType': 'range'}], 'range': {'from': 'now-15m', 'to': 'now'}}}
+ explore = {'live': {'datasource': 'loki', 'queries': [{'refId': 'A', 'expr': log_query.replace('${host}', PUBLIC_HOSTS), 'queryType': 'range'}], 'range': {'from': 'now-15m', 'to': 'now'}}}
  return {'uid': 'papyrus-live-traffic', 'title': 'Papyrus / Live traffic', 'schemaVersion': 39, 'version': 1,
   'editable': False, 'timezone': 'browser', 'refresh': '5s', 'time': {'from': 'now-15m', 'to': 'now'}, 'tags': ['Papyrus'],
   'description': 'Origin HTTPS traffic, sampled every five seconds. Includes bots, health probes and background requests, excludes monitoring and HTTP redirects. Not a visitor count. Cloudflare/browser cache hits do not reach the origin. Long-lived streams appear in completed metrics and logs when they close.',

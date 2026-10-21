@@ -16,7 +16,7 @@ class LiveTrafficTests(unittest.TestCase):
         labels = f'job="services",handler="subroute",host="{host}"'
         metric = 'caddy_http_request_duration_seconds_count'
         def expression(title):
-            return panels[title]['targets'][0]['expr'].replace('${host:regex}', PUBLIC_HOSTS)
+            return panels[title]['targets'][0]['expr'].replace('${host}', PUBLIC_HOSTS)
         series = [
             {'series': metric + '{' + labels + ',code="200"}', 'values': '0+8x60'},
             {'series': metric + '{' + labels + ',code="500"}', 'values': '0+2x60'},
