@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Exercise real provisioning, PromQL, log redaction and persistence in isolation."""
 import base64
+import ipaddress
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -61,12 +63,10 @@ def smoke():
         (folder / 'test.alloy').write_text('loki.source.api "test" {\n http { listen_address = "0.0.0.0"\n listen_port = 9091 }\n forward_to = [loki.process.sanitize.receiver]\n}\n' + sanitizer)
         caddy = (ROOT / 'edge/Caddyfile').read_text()
         snippet = caddy[caddy.index('(access_log)'):caddy.index(':9180')]
-        (folder / 'Caddyfile').write_text('''{
- metrics {
-  per_host
- }
-}
-''' + snippet + ''':9180 {
+        # Exercise the production trust settings with a loopback fixture proxy.
+        global_config = caddy[:caddy.index('(access_log)')].replace('email {$ACME_EMAIL}', '')
+        global_config = re.sub(r'trusted_proxies static [^\n]+', 'trusted_proxies static 127.0.0.1/32 ::1/128', global_config)
+        (folder / 'Caddyfile').write_text(global_config + snippet + ''':9180 {
  metrics /metrics
 }
 :8081 {
@@ -174,7 +174,22 @@ http://papyrus-reader.com:8080 {
                 raise AssertionError('Grafana metrics route is public')
             except urllib.error.HTTPError as error:
                 assert error.code == 404
-            request(edge+'/?token=edge-secret', headers=edge_headers)
+            private_values = ['edge-query-secret', 'edge-other-secret', 'edge-header-secret', 'edge-cookie-secret',
+                              'edge-reset-secret', 'edge-encoded-secret', 'edge-trusted-secret']
+            fixture_path = '/books/fixture-book/files/fixture-file'
+            request(edge+fixture_path+'?token=edge-query-secret&other=edge-other-secret', headers={**edge_headers,
+                    'Authorization': 'Bearer edge-header-secret', 'Cookie': 'session=edge-cookie-secret',
+                    'CF-Connecting-IP': '203.0.113.99', 'X-Forwarded-For': '203.0.113.99'})
+            request(edge+'/reset-password?token=edge-reset-secret', headers=edge_headers)
+            request(edge+'/encoded%3Fsegment?token=edge-encoded-secret', headers=edge_headers)
+            for suffix, client_ip in [('ipv4', '203.0.113.23'), ('ipv6', '2001:db8::23')]:
+                compose('exec','-T','caddy','wget','-q','-O','/dev/null',
+                        '--header','Host: papyrus-reader.com','--header','CF-Connecting-IP: '+client_ip,
+                        'http://127.0.0.1:8080/books/trusted-'+suffix+'?token=edge-trusted-secret')
+            trusted_vpn = subprocess.run(command+['exec','-T','caddy','wget','-O','/dev/null',
+                    '--header','Host: papyrus-reader.com','--header','CF-Connecting-IP: 10.77.0.2',
+                    'http://127.0.0.1:8080/vpn-test/trusted'], capture_output=True, text=True)
+            assert trusted_vpn.returncode != 0 and '404' in trusted_vpn.stderr
             for headers in [{}, {'X-Forwarded-For':'10.77.0.2', 'X-Real-IP':'10.77.0.2', 'CF-Connecting-IP':'10.77.0.2'}]:
                 try:
                     urllib.request.urlopen(urllib.request.Request(edge+'/vpn-test', headers={**headers, **edge_headers}), timeout=10)
@@ -182,19 +197,40 @@ http://papyrus-reader.com:8080 {
                 except urllib.error.HTTPError as error:
                     assert error.code == 404
             logs = compose('logs','--no-color','caddy',capture=True).stdout
-            assert 'edge-secret' not in logs and '"status":200' in logs
+            assert all(secret not in logs for secret in private_values) and '"status":200' in logs
             access_logs = compose('logs','--no-color','--no-log-prefix','caddy',capture=True).stdout.splitlines()
             access_logs = [line for line in access_logs if line.startswith('{') and 'http.log.access.' in line]
             assert access_logs
+            requests = {json.loads(line)['request']['uri']: json.loads(line)['request'] for line in access_logs}
+            actual_ip = requests[fixture_path]['client_ip']
+            ipaddress.ip_address(actual_ip)
+            assert actual_ip != '203.0.113.99', 'Direct clients can spoof the logged IP'
+            assert requests['/books/trusted-ipv4']['client_ip'] == '203.0.113.23'
+            assert requests['/books/trusted-ipv6']['client_ip'] == '2001:db8::23'
+            assert '/reset-password' in requests and '/encoded%3Fsegment' in requests
+            assert all('?' not in value['uri'] and 'headers' not in value for value in requests.values())
             request(alloy+'/loki/api/v1/push', {'streams': [{'stream': {'project': 'papyrus-edge', 'service_name': 'proxy'},
                     'values': [[str(time.time_ns()+index), line] for index, line in enumerate(access_logs)]}]})
+            runtime_log = json.dumps({'logger': 'http.log.error', 'msg': 'runtime-fixture /books/private-book 192.0.2.10'})
+            request(alloy+'/loki/api/v1/push', {'streams': [{'stream': {'project': 'papyrus-edge', 'service_name': 'proxy'},
+                    'values': [[str(time.time_ns()), runtime_log]]}]})
             live = json.loads((folder/'grafana/dashboards/live-traffic.json').read_text())
             log_query = live['panels'][-1]['targets'][0]['expr'].replace('${host}', PUBLIC_HOSTS)
             def verify_access_feed():
                 result = request(loki+'/loki/api/v1/query_range?'+urllib.parse.urlencode({'query': log_query, 'limit': 100}))
                 lines = [line[1] for stream in result['data']['result'] for line in stream['values']]
-                assert any('papyrus-reader.com · 500' in line for line in lines), lines
-                assert all('edge-secret' not in line and '127.0.0.1' not in line for line in lines)
+                assert any('/fixture-error · ' in line and ' · 500 · ' in line for line in lines), lines
+                assert any(fixture_path+' · '+actual_ip in line for line in lines), lines
+                assert any('/books/trusted-ipv4 · 203.0.113.23' in line for line in lines), lines
+                assert any('/books/trusted-ipv6 · 2001:db8::23' in line for line in lines), lines
+                assert all(secret not in line for line in lines for secret in private_values)
+                raw_logs = request(loki+'/loki/api/v1/query_range?'+urllib.parse.urlencode({'query': '{project="papyrus-edge",service_name="proxy"}', 'limit': 100}))
+                for stream in raw_logs['data']['result']:
+                    assert set(stream['stream']) <= {'project', 'service_name', 'detected_level'}, stream['stream']
+                    for _, line in stream['values']:
+                        assert all(secret not in line for secret in private_values)
+                errors = [line for stream in raw_logs['data']['result'] for _, line in stream['values'] if 'runtime-fixture' in line]
+                assert errors and all('private-book' not in line and '192.0.2.10' not in line for line in errors)
             retry(verify_access_feed)
             compose('up','-d','--force-recreate','loki','grafana')
             loki = address('loki',3100)

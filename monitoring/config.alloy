@@ -147,6 +147,13 @@ loki.source.docker "local" {
   forward_to = [loki.process.sanitize.receiver]
 }
 loki.process "sanitize" {
+  // Preserve paths and client IPs only in Caddy's structured access logs.
+  stage.match {
+    selector = "{project=\"papyrus-edge\",service_name=\"proxy\"} |~ \"\\\"logger\\\"[[:space:]]*:[[:space:]]*\\\"http[.]log[.]access[.]\""
+    stage.static_labels {
+      values = {papyrus_access_log = "true"}
+    }
+  }
   stage.replace {
     expression = "\\?([^\\s\\\"]+)"
     replace = "[REDACTED]"
@@ -163,13 +170,19 @@ loki.process "sanitize" {
     expression = "([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})"
     replace = "[REDACTED]"
   }
-  stage.replace {
-    expression = "(\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b)"
-    replace = "[REDACTED]"
+  stage.match {
+    selector = "{papyrus_access_log!=\"true\"}"
+    stage.replace {
+      expression = "(\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b)"
+      replace = "[REDACTED]"
+    }
+    stage.replace {
+      expression = "(/(?:books|users|media)/[A-Za-z0-9_-]+)"
+      replace = "/[REDACTED]"
+    }
   }
-  stage.replace {
-    expression = "(/(?:books|users|media)/[A-Za-z0-9_-]+)"
-    replace = "/[REDACTED]"
+  stage.label_drop {
+    values = ["papyrus_access_log"]
   }
   forward_to = [loki.write.local.receiver]
 }
