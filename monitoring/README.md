@@ -21,8 +21,9 @@ Cached browser or Cloudflare responses never reaching Caddy are not counted.
 Duration, bytes and logs for long-lived streams appear when those streams close.
 
 The request feed shows the latest 100 sanitized entries. Use **Stream requests**
-and click **Live** in Explore for continuous tailing. Raw URLs, IP addresses,
-headers and private reading data remain excluded. HTTP status queries use
+and click **Live** in Explore for continuous tailing. New entries show request
+paths and client IPs. Query strings and headers remain excluded. Older entries
+show unavailable paths/IPs because those fields were not collected. HTTP status queries use
 `caddy_http_request_duration_seconds_count`, because `caddy_http_requests_total`
 does not have a status-code label. The outer `subroute` handler counts requests
 once, excluding the separate HTTP redirect handler.
@@ -77,9 +78,11 @@ space. Metrics remain available. Log delivery retries are bounded and eventually
 drop logs rather than buffer indefinitely. Alert thresholds start earlier.
 The guard marker persists across deployments and requires deliberate recovery.
 
-Caddy excludes URLs, client addresses, and headers from access logs. Alloy
-redacts known query, token, address, email, and user/media identifier patterns in
-application logs. This is defense in depth, not a guarantee against arbitrary
+Caddy retains request paths and client IPs, removing query strings and headers
+before Docker stores access logs. Paths can contain book/file identifiers. Alloy
+preserves those access-log fields in Loki for the existing 14-day retention,
+without indexing paths or IPs as labels. Other logs retain their existing query,
+token, address, email, and user/media identifier redaction. This is defense in depth, not a guarantee against arbitrary
 sensitive free-form messages. Application code must still avoid logging secrets
 and book content. Loki labels contain only project and service identity.
 Alloy has privileged host and Docker access and must stay private.
