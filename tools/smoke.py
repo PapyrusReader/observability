@@ -70,6 +70,8 @@ def smoke():
  metrics /metrics
 }
 :8081 {
+ @forwarding_test path /forwarding-test*
+ respond @forwarding_test "{http.request.header.X-Forwarded-For}|{http.request.header.X-Real-IP}|{http.request.header.CF-Connecting-IP}|{http.request.header.X-Forwarded-Proto}|{http.request.header.X-Forwarded-Host}|{http.request.header.Forwarded}"
  header Content-Type "text/plain; version=0.0.4"
  root * /srv/fixtures
  file_server
@@ -78,6 +80,11 @@ http://papyrus-reader.com:8080 {
  import access_log
  route {
   import private_metrics
+  handle /forwarding-test* {
+   reverse_proxy 127.0.0.1:8081 {
+    import upstream_headers
+   }
+  }
   handle /vpn-test* {
    import vpn_only
    respond "vpn-ok"
@@ -182,6 +189,15 @@ http://papyrus-reader.com:8080 {
                     'CF-Connecting-IP': '203.0.113.99', 'X-Forwarded-For': '203.0.113.99'})
             request(edge+'/reset-password?token=edge-reset-secret', headers=edge_headers)
             request(edge+'/encoded%3Fsegment?token=edge-encoded-secret', headers=edge_headers)
+            spoofed_headers = {'CF-Connecting-IP': '203.0.113.99', 'X-Forwarded-For': '198.51.100.77, 203.0.113.99',
+                               'X-Real-IP': '203.0.113.99', 'X-Forwarded-Host': 'forged.invalid',
+                               'X-Forwarded-Proto': 'https', 'Forwarded': 'for=203.0.113.99;host=forged.invalid'}
+            direct_forwarded = request(edge+'/forwarding-test/direct', headers={**edge_headers, **spoofed_headers})
+            trusted_headers = {**edge_headers, **spoofed_headers, 'CF-Connecting-IP': '203.0.113.23'}
+            header_args = [arg for name, value in trusted_headers.items() for arg in ['--header', name+': '+value]]
+            trusted_forwarded = compose('exec','-T','caddy','wget','-q','-O','-',*header_args,
+                    'http://127.0.0.1:8080/forwarding-test/trusted',capture=True).stdout
+            assert trusted_forwarded == '203.0.113.23|203.0.113.23|203.0.113.23|http|papyrus-reader.com|', trusted_forwarded
             for suffix, client_ip in [('ipv4', '203.0.113.23'), ('ipv6', '2001:db8::23')]:
                 compose('exec','-T','caddy','wget','-q','-O','/dev/null',
                         '--header','Host: papyrus-reader.com','--header','CF-Connecting-IP: '+client_ip,
@@ -204,11 +220,15 @@ http://papyrus-reader.com:8080 {
             requests = {json.loads(line)['request']['uri']: json.loads(line)['request'] for line in access_logs}
             actual_ip = requests[fixture_path]['client_ip']
             ipaddress.ip_address(actual_ip)
+            assert direct_forwarded == f'{actual_ip}|{actual_ip}|{actual_ip}|http|papyrus-reader.com|', direct_forwarded
             assert actual_ip != '203.0.113.99', 'Direct clients can spoof the logged IP'
             assert requests['/books/trusted-ipv4']['client_ip'] == '203.0.113.23'
             assert requests['/books/trusted-ipv6']['client_ip'] == '2001:db8::23'
             assert '/reset-password' in requests and '/encoded%3Fsegment' in requests
             assert all('?' not in value['uri'] and 'headers' not in value for value in requests.values())
+            legacy = json.loads(access_logs[0])
+            del legacy['request']['uri'], legacy['request']['client_ip']
+            access_logs.append(json.dumps(legacy))
             request(alloy+'/loki/api/v1/push', {'streams': [{'stream': {'project': 'papyrus-edge', 'service_name': 'proxy'},
                     'values': [[str(time.time_ns()+index), line] for index, line in enumerate(access_logs)]}]})
             runtime_log = json.dumps({'logger': 'http.log.error', 'msg': 'runtime-fixture /books/private-book 192.0.2.10'})
@@ -223,6 +243,7 @@ http://papyrus-reader.com:8080 {
                 assert any(fixture_path+' · '+actual_ip in line for line in lines), lines
                 assert any('/books/trusted-ipv4 · 203.0.113.23' in line for line in lines), lines
                 assert any('/books/trusted-ipv6 · 2001:db8::23' in line for line in lines), lines
+                assert any('[path unavailable]' in line and '[IP unavailable]' in line for line in lines), lines
                 assert all(secret not in line for line in lines for secret in private_values)
                 raw_logs = request(loki+'/loki/api/v1/query_range?'+urllib.parse.urlencode({'query': '{project="papyrus-edge",service_name="proxy"}', 'limit': 100}))
                 for stream in raw_logs['data']['result']:

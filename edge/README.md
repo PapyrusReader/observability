@@ -50,6 +50,7 @@ this route. The Caddy admin listener remains on container loopback.
 Access logs retain paths and client IPs, stripping query strings and headers
 before Docker stores them. `CF-Connecting-IP` is trusted only when the connection
 comes from Cloudflare's published IPv4/IPv6 ranges. Other connections use the
-actual peer address. Keep the ranges in `Caddyfile` aligned with
+actual peer address. Upstream forwarding headers are replaced with Caddy's
+validated client address, scheme and host. Keep the ranges in `Caddyfile` aligned with
 [Cloudflare's list](https://www.cloudflare.com/ips/). The VPN gate continues to
 check the actual peer address, regardless of forwarding headers.

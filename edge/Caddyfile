@@ -29,6 +29,15 @@
 	}
 }
 
+(upstream_headers) {
+	header_up X-Forwarded-For {client_ip}
+	header_up X-Real-IP {client_ip}
+	header_up CF-Connecting-IP {client_ip}
+	header_up X-Forwarded-Proto {scheme}
+	header_up X-Forwarded-Host {host}
+	header_up -Forwarded
+}
+
 (private_metrics) {
 	@private_metrics path /metrics /metrics/*
 	respond @private_metrics 404
@@ -45,7 +54,9 @@
 
 {$WEBSITE_DOMAIN} {
 	import access_log
-	reverse_proxy papyrus-website:8080
+	reverse_proxy papyrus-website:8080 {
+		import upstream_headers
+	}
 }
 
 www.{$WEBSITE_DOMAIN} {
@@ -55,22 +66,30 @@ www.{$WEBSITE_DOMAIN} {
 
 {$APP_DOMAIN} {
 	import access_log
-	reverse_proxy papyrus-app:8080
+	reverse_proxy papyrus-app:8080 {
+		import upstream_headers
+	}
 }
 
 {$API_DOMAIN} {
 	import access_log
-	reverse_proxy papyrus-api:8080
+	reverse_proxy papyrus-api:8080 {
+		import upstream_headers
+	}
 }
 
 {$SYNC_DOMAIN} {
 	import access_log
-	reverse_proxy papyrus-sync:8080
+	reverse_proxy papyrus-sync:8080 {
+		import upstream_headers
+	}
 }
 
 monitor.{$WEBSITE_DOMAIN} {
 	import access_log
 	import vpn_only
 	import private_metrics
-	reverse_proxy papyrus-grafana:3000
+	reverse_proxy papyrus-grafana:3000 {
+		import upstream_headers
+	}
 }
