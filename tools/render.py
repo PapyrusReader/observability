@@ -2,10 +2,53 @@
 """Generate reviewable Grafana JSON from the dashboard and alert definitions."""
 import json
 import re
+from urllib.parse import urlencode
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CAD = 'container_label_com_docker_compose_service'
+PUBLIC_HOSTS = '((www|app|api|sync)[.])?papyrus-reader[.]com(:443)?'
+
+
+def live_traffic_dashboard():
+ selector = 'job="services",handler="subroute",host=~"${host:regex}"'
+ count = 'caddy_http_request_duration_seconds_count{' + selector + '}'
+ errors = 'caddy_http_request_duration_seconds_count{' + selector + ',code=~"5.."}'
+ bandwidth = 'caddy_http_response_size_bytes_sum{' + selector + '}'
+ inflight = 'caddy_http_requests_in_flight{' + selector + '}'
+ error_rate = 'sum by(host) (rate(' + errors + '[1m])) or (sum by(host) (rate(' + count + '[1m])) * 0)'
+ panels = []
+
+ def panel(title, expression, unit, x, y, width=12, height=8, kind='timeseries', legend='{{host}}', description=''):
+  panels.append({'id': len(panels)+1, 'title': title, 'description': description, 'type': kind,
+   'datasource': {'type': 'prometheus', 'uid': 'prometheus'},
+   'targets': [{'refId': 'A', 'expr': expression, 'legendFormat': legend, 'instant': kind == 'stat', 'range': kind != 'stat'}],
+   'gridPos': {'x': x, 'y': y, 'w': width, 'h': height},
+   'fieldConfig': {'defaults': {'unit': unit, 'min': 0, 'color': {'mode': 'palette-classic'} if kind != 'stat' else {'mode': 'fixed', 'fixedColor': 'blue'}}, 'overrides': []},
+   'options': {'reduceOptions': {'calcs': ['lastNotNull'], 'values': False}, 'colorMode': 'value', 'graphMode': 'none'} if kind == 'stat' else {}})
+
+ panel('Requests in the last minute', 'sum(increase(' + count + '[1m]))', 'short', 0, 0, 6, 4, 'stat', description='Estimated completed HTTPS requests, including bots, probes and background sync. These are not visitors.')
+ panel('Response bytes in the last minute', 'sum(increase(' + bandwidth + '[1m]))', 'bytes', 6, 0, 6, 4, 'stat', description='HTTP response bytes for completed requests. Open sync streams are accounted for when they close.')
+ panel('Requests in flight', 'sum(' + inflight + ')', 'short', 12, 0, 6, 4, 'stat', description='Requests being handled at the latest sample, including open sync connections. These are not users.')
+ panel('Server errors in the last minute', 'sum(increase(' + errors + '[1m])) or (sum(increase(' + count + '[1m])) * 0)', 'short', 18, 0, 6, 4, 'stat')
+ panel('Completed requests per second', 'sum by(host) (rate(' + count + '[1m]))', 'reqps', 0, 4)
+ panel('Response bytes per second', 'sum by(host) (rate(' + bandwidth + '[1m]))', 'Bps', 12, 4)
+ panel('Responses by status', 'sum by(host,code) (rate(' + count + '[1m]))', 'reqps', 0, 12, legend='{{host}} · {{code}}')
+ panel('P95 duration, excluding sync', 'histogram_quantile(0.95, sum by(le,host) (rate(caddy_http_request_duration_seconds_bucket{' + selector + ',host!~"sync[.]papyrus-reader[.]com(:443)?"}[1m])))', 's', 12, 12, description='Completed requests only. No duration is shown while a host has no recent requests. Sync streams are excluded.')
+ panel('Server errors per second', error_rate, 'reqps', 0, 20)
+ panel('Caddy sample age', 'time() - timestamp(up{job="services",service="edge"})', 's', 12, 20, description='Age of the latest scrape, independent of the host filter. Normal sampling interval is five seconds.')
+ log_query = '{project="papyrus-edge",service_name="proxy"} | json | __error__="" | logger=~"http[.]log[.]access[.].*" | request_host=~"${host:regex}" | line_format "{{.request_method}} {{.request_host}} · {{.status}} · {{.duration}} s · {{.size}} bytes"'
+ panels.append({'id': len(panels)+1, 'title': 'Recent completed requests', 'type': 'logs',
+  'description': 'Newest 100 sanitized access logs, refreshed every five seconds. Use the streaming link and click Live for continuous logs. No URLs, IPs, headers or reading content are collected.',
+  'datasource': {'type': 'loki', 'uid': 'loki'}, 'targets': [{'refId': 'A', 'expr': log_query, 'queryType': 'range', 'maxLines': 100}],
+  'gridPos': {'x': 0, 'y': 28, 'w': 24, 'h': 12},
+  'options': {'showTime': True, 'showLabels': False, 'wrapLogMessage': True, 'sortOrder': 'Descending', 'enableLogDetails': False}})
+ explore = {'live': {'datasource': 'loki', 'queries': [{'refId': 'A', 'expr': log_query.replace('${host:regex}', PUBLIC_HOSTS), 'queryType': 'range'}], 'range': {'from': 'now-15m', 'to': 'now'}}}
+ return {'uid': 'papyrus-live-traffic', 'title': 'Papyrus / Live traffic', 'schemaVersion': 39, 'version': 1,
+  'editable': False, 'timezone': 'browser', 'refresh': '5s', 'time': {'from': 'now-15m', 'to': 'now'}, 'tags': ['Papyrus'],
+  'description': 'Origin HTTPS traffic, sampled every five seconds. Includes bots, health probes and background requests, excludes monitoring and HTTP redirects. Not a visitor count. Cloudflare/browser cache hits do not reach the origin. Long-lived streams appear in completed metrics and logs when they close.',
+  'templating': {'list': [{'name': 'host', 'label': 'Subdomain', 'type': 'custom', 'query': 'papyrus-reader.com,www.papyrus-reader.com,app.papyrus-reader.com,api.papyrus-reader.com,sync.papyrus-reader.com', 'multi': True, 'includeAll': True, 'allValue': PUBLIC_HOSTS, 'current': {'selected': True, 'text': ['All'], 'value': ['$__all']}, 'options': []}]},
+  'links': [{'title': 'Stream requests (Explore → Live)', 'type': 'link', 'url': '/explore?' + urlencode({'schemaVersion': 1, 'panes': json.dumps(explore, separators=(',', ':'))}), 'targetBlank': True}], 'panels': panels}
 
 
 def container_usage(expression):
@@ -17,20 +60,20 @@ DASHBOARDS = {
   ('Required service health', 'papyrus_container_healthy', 'short'),
   ('Monitoring VPN and DNS', 'papyrus_vpn_service_up', 'short'),
   ('Public probes from production', 'probe_success', 'short'),
-  ('Requests per second by host', 'sum by(host) (rate(caddy_http_requests_total[5m]))', 'reqps'),
-  ('Server errors per second', 'sum by(host) (rate(caddy_http_requests_total{code=~"5.."}[5m])) or (sum by(host) (rate(caddy_http_requests_total[5m])) * 0)', 'reqps'),
+  ('Completed HTTPS requests per second by host', 'sum by(host) (rate(caddy_http_request_duration_seconds_count{handler="subroute"}[5m]))', 'reqps'),
+  ('Server errors per second', 'sum by(host) (rate(caddy_http_request_duration_seconds_count{handler="subroute",code=~"5.."}[5m])) or (sum by(host) (rate(caddy_http_request_duration_seconds_count{handler="subroute"}[5m])) * 0)', 'reqps'),
   ('Available host memory', 'node_memory_MemAvailable_bytes', 'bytes'),
   ('Root filesystem available', 'papyrus_root_available_bytes', 'bytes'),
   ('Collector and service scrapes', 'up', 'short'),
   ('Loki disk guard (1 = paused)', 'papyrus_loki_disk_guard_active', 'short'),
  ],
  'traffic': [
-  ('Requests per second', 'sum by(host) (rate(caddy_http_requests_total[5m]))', 'reqps'),
-  ('HTTP response bytes per second', 'sum by(host) (rate(caddy_http_response_size_bytes_sum[5m]))', 'Bps'),
-  ('Responses by hostname and status', 'sum by(host,code) (increase(caddy_http_requests_total[1h]))', 'short'),
-  ('P95 request duration, excluding sync', 'histogram_quantile(0.95, sum by(le,host) (rate(caddy_http_request_duration_seconds_bucket{host!="sync.papyrus-reader.com"}[5m])))', 's'),
-  ('Completed sync connection duration P95', 'histogram_quantile(0.95, sum by(le) (rate(caddy_http_request_duration_seconds_bucket{host="sync.papyrus-reader.com"}[5m])))', 's'),
-  ('HTTP response bytes over selected range', 'sum by(host) (increase(caddy_http_response_size_bytes_sum[$__range]))', 'bytes'),
+  ('Completed HTTPS requests per second', 'sum by(host) (rate(caddy_http_request_duration_seconds_count{handler="subroute"}[5m]))', 'reqps'),
+  ('HTTP response bytes per second', 'sum by(host) (rate(caddy_http_response_size_bytes_sum{handler="subroute"}[5m]))', 'Bps'),
+  ('HTTPS responses by hostname and status', 'sum by(host,code) (increase(caddy_http_request_duration_seconds_count{handler="subroute"}[1h]))', 'short'),
+  ('P95 request duration, excluding sync', 'histogram_quantile(0.95, sum by(le,host) (rate(caddy_http_request_duration_seconds_bucket{handler="subroute",host!="sync.papyrus-reader.com"}[5m])))', 's'),
+  ('Completed sync connection duration P95', 'histogram_quantile(0.95, sum by(le) (rate(caddy_http_request_duration_seconds_bucket{handler="subroute",host="sync.papyrus-reader.com"}[5m])))', 's'),
+  ('HTTP response bytes over selected range', 'sum by(host) (increase(caddy_http_response_size_bytes_sum{handler="subroute"}[$__range]))', 'bytes'),
  ],
  'resources': [
   ('Host CPU utilization', '1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))', 'percentunit'),
@@ -74,7 +117,7 @@ ALERTS = [
  ('disk-forecast','Root disk projected full within 7 days','predict_linear(papyrus_root_available_bytes[6h], 604800) < 0','30m','warning'),
  ('restarts','Repeated container restarts','increase(papyrus_container_restarts_total[15m]) >= 3','1m','warning'),
  ('oom','Container OOM detected','increase(papyrus_container_oom_total[10m]) > 0','0s','critical'),
- ('http-errors','Elevated HTTP server errors','(sum by(host) (increase(caddy_http_requests_total{code=~"5.."}[10m])) >= 20) and (sum by(host) (rate(caddy_http_requests_total{code=~"5.."}[10m])) / sum by(host) (rate(caddy_http_requests_total[10m])) > 0.05)','5m','critical'),
+ ('http-errors','Elevated HTTP server errors','(sum by(host) (increase(caddy_http_request_duration_seconds_count{handler="subroute",code=~"5.."}[10m])) >= 20) and (sum by(host) (rate(caddy_http_request_duration_seconds_count{handler="subroute",code=~"5.."}[10m])) / sum by(host) (rate(caddy_http_request_duration_seconds_count{handler="subroute"}[10m])) > 0.05)','5m','critical'),
  ('db-unreachable','Database monitoring connection failed','pg_up < 1','3m','critical'),
  ('replication-inactive','Logical replication slot inactive','papyrus_replication_active < 1','5m','warning'),
  ('db-connections','Database connections above 80%','sum by(instance) (pg_stat_database_numbackends) / on(instance) pg_settings_max_connections > 0.8','10m','warning'),
@@ -148,6 +191,7 @@ def render():
   dashboard={'uid':'papyrus-'+name,'title':'Papyrus / '+name.replace('-',' ').title(),'schemaVersion':39,'version':1,'editable':False,'timezone':'browser','refresh':'30s','time':{'from':'now-6h','to':'now'},'tags':['Papyrus'],'panels':panels,'description':'Production-host probes cannot detect a whole-host outage. HTTP bytes exclude transport overhead. Sync durations represent completed streams. History begins at installation.'}
   (ROOT/'monitoring/grafana/dashboards'/f'{name}.json').write_text(json.dumps(dashboard,indent=2)+'\n')
  (ROOT/'monitoring/grafana/dashboards/app-statistics.json').write_text(json.dumps(app_statistics_dashboard(),indent=2)+'\n')
+ (ROOT/'monitoring/grafana/dashboards/live-traffic.json').write_text(json.dumps(live_traffic_dashboard(),indent=2)+'\n')
  rules=[]
  for uid,title,expr,pending,severity in ALERTS:
   if uid != 'http-errors':

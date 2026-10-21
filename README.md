@@ -8,7 +8,7 @@ shared Caddy HTTPS proxy and WireGuard access.
 
 Activate your Papyrus WireGuard tunnel, then open
 [monitor.papyrus-reader.com](https://monitor.papyrus-reader.com) and sign in.
-Dashboards cover service health, subdomain traffic, server resources,
+Dashboards cover service health, live subdomain traffic, server resources,
 database/sync activity, and app statistics. Public access, including the login page, is blocked.
 
 ## Runbooks

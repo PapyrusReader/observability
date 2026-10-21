@@ -16,7 +16,7 @@
   "panels": [
     {
       "id": 1,
-      "title": "Requests per second",
+      "title": "Completed HTTPS requests per second",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -25,7 +25,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host) (rate(caddy_http_requests_total[5m]))",
+          "expr": "sum by(host) (rate(caddy_http_request_duration_seconds_count{handler=\"subroute\"}[5m]))",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
@@ -53,7 +53,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host) (rate(caddy_http_response_size_bytes_sum[5m]))",
+          "expr": "sum by(host) (rate(caddy_http_response_size_bytes_sum{handler=\"subroute\"}[5m]))",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
@@ -72,7 +72,7 @@
     },
     {
       "id": 3,
-      "title": "Responses by hostname and status",
+      "title": "HTTPS responses by hostname and status",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -81,7 +81,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host,code) (increase(caddy_http_requests_total[1h]))",
+          "expr": "sum by(host,code) (increase(caddy_http_request_duration_seconds_count{handler=\"subroute\"}[1h]))",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
@@ -109,7 +109,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by(le,host) (rate(caddy_http_request_duration_seconds_bucket{host!=\"sync.papyrus-reader.com\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by(le,host) (rate(caddy_http_request_duration_seconds_bucket{handler=\"subroute\",host!=\"sync.papyrus-reader.com\"}[5m])))",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
@@ -137,7 +137,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(caddy_http_request_duration_seconds_bucket{host=\"sync.papyrus-reader.com\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(caddy_http_request_duration_seconds_bucket{handler=\"subroute\",host=\"sync.papyrus-reader.com\"}[5m])))",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],
@@ -165,7 +165,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host) (increase(caddy_http_response_size_bytes_sum[$__range]))",
+          "expr": "sum by(host) (increase(caddy_http_response_size_bytes_sum{handler=\"subroute\"}[$__range]))",
           "legendFormat": "{{host}} {{code}} {{service}} {{kind}} {{server}} {{instance}} {{device}} {{job}}"
         }
       ],

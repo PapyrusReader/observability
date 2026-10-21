@@ -913,7 +913,7 @@
               "datasourceUid": "prometheus",
               "model": {
                 "refId": "A",
-                "expr": "(sum by(host) (increase(caddy_http_requests_total{code=~\"5..\"}[10m])) >= 20) and (sum by(host) (rate(caddy_http_requests_total{code=~\"5..\"}[10m])) / sum by(host) (rate(caddy_http_requests_total[10m])) > 0.05)",
+                "expr": "(sum by(host) (increase(caddy_http_request_duration_seconds_count{handler=\"subroute\",code=~\"5..\"}[10m])) >= 20) and (sum by(host) (rate(caddy_http_request_duration_seconds_count{handler=\"subroute\",code=~\"5..\"}[10m])) / sum by(host) (rate(caddy_http_request_duration_seconds_count{handler=\"subroute\"}[10m])) > 0.05)",
                 "instant": true,
                 "intervalMs": 1000,
                 "maxDataPoints": 43200
