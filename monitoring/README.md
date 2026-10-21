@@ -8,6 +8,25 @@ Grafana requires WireGuard and a login. Other monitoring services have no public
 
 See [App statistics](app-statistics.md) for user, book, file, and storage counts.
 
+## Live traffic
+
+Open **Papyrus / Live traffic** for five-second refreshes and a public-subdomain
+filter. Caddy alone is sampled every five seconds. Other collectors retain their
+existing intervals. Metrics and logs can take several seconds to arrive.
+
+The dashboard counts completed origin HTTPS requests, including bots, health
+probes and background sync. It excludes monitoring traffic and HTTP redirects.
+In-flight requests include open sync connections and are not visitor counts.
+Cached browser or Cloudflare responses never reaching Caddy are not counted.
+Duration, bytes and logs for long-lived streams appear when those streams close.
+
+The request feed shows the latest 100 sanitized entries. Use **Stream requests**
+and click **Live** in Explore for continuous tailing. Raw URLs, IP addresses,
+headers and private reading data remain excluded. HTTP status queries use
+`caddy_http_request_duration_seconds_count`, because `caddy_http_requests_total`
+does not have a status-code label. The outer `subroute` handler counts requests
+once, excluding the separate HTTP redirect handler.
+
 ## Installation
 
 First validate with `python3 tools/check.py`, `python3 -m unittest discover -s tests`,

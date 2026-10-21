@@ -11,12 +11,13 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from app_statistics import collect
+from render import PUBLIC_HOSTS
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def request(url, payload=None, auth=False):
-    headers = {}
+def request(url, payload=None, auth=False, headers=None):
+    headers = dict(headers or {})
     if auth:
         headers['Authorization'] = 'Basic ' + base64.b64encode(b'admin:smoke-password').decode()
     if payload is not None:
@@ -46,7 +47,7 @@ def smoke():
         folder = Path(directory)
         shutil.copytree(ROOT / 'monitoring/grafana', folder / 'grafana')
         shutil.copy(ROOT / 'monitoring/loki.yml', folder / 'loki.yml')
-        (folder / 'prometheus.yml').write_text('global:\n  scrape_interval: 1s\nscrape_configs:\n  - job_name: self\n    static_configs:\n      - targets: ["prometheus:9090"]\n  - job_name: app-statistics\n    metrics_path: /app-statistics.prom\n    static_configs:\n      - targets: ["caddy:8080"]\n')
+        (folder / 'prometheus.yml').write_text('global:\n  scrape_interval: 1s\nscrape_configs:\n  - job_name: self\n    static_configs:\n      - targets: ["prometheus:9090"]\n  - job_name: app-statistics\n    metrics_path: /app-statistics.prom\n    static_configs:\n      - targets: ["caddy:8081"]\n  - job_name: services\n    static_configs:\n      - targets: ["caddy:9180"]\n        labels:\n          service: edge\n')
         statistics = folder / 'metrics/app-statistics.prom'
         collect(statistics, lambda: {'users': {'enabled': 4, 'disabled': 1},
                 'registrations': {'24h': 1, '7d': 2, '30d': 3}, 'books': {'digital': 6, 'physical': 1},
@@ -60,7 +61,36 @@ def smoke():
         (folder / 'test.alloy').write_text('loki.source.api "test" {\n http { listen_address = "0.0.0.0"\n listen_port = 9091 }\n forward_to = [loki.process.sanitize.receiver]\n}\n' + sanitizer)
         caddy = (ROOT / 'edge/Caddyfile').read_text()
         snippet = caddy[caddy.index('(access_log)'):caddy.index(':9180')]
-        (folder / 'Caddyfile').write_text(snippet + ':8080 {\n import access_log\n route {\n import private_metrics\n handle /vpn-test* {\n import vpn_only\n respond "vpn-ok"\n }\n handle /app-statistics.prom {\n header Content-Type "text/plain; version=0.0.4"\n root * /srv/fixtures\n file_server\n }\n handle {\n respond "ok"\n }\n }\n}\n')
+        (folder / 'Caddyfile').write_text('''{
+ metrics {
+  per_host
+ }
+}
+''' + snippet + ''':9180 {
+ metrics /metrics
+}
+:8081 {
+ header Content-Type "text/plain; version=0.0.4"
+ root * /srv/fixtures
+ file_server
+}
+http://papyrus-reader.com:8080 {
+ import access_log
+ route {
+  import private_metrics
+  handle /vpn-test* {
+   import vpn_only
+   respond "vpn-ok"
+  }
+  handle /fixture-error {
+   respond "fixture failure" 500
+  }
+  handle {
+   respond "ok"
+  }
+ }
+}
+''')
         config = {'name': 'papyrus-observability-smoke', 'services': {
             'grafana': {'image':images['grafana'],'environment':{'GF_SECURITY_ADMIN_PASSWORD':'smoke-password','GF_USERS_ALLOW_SIGN_UP':'false','GF_AUTH_ANONYMOUS_ENABLED':'false','GF_ANALYTICS_REPORTING_ENABLED':'false','GF_SMTP_ENABLED':'false','ALERT_EMAIL':'smoke@example.invalid'},'ports':['127.0.0.1::3000'],'volumes':['grafana:/var/lib/grafana',str(folder/'grafana/provisioning')+':/etc/grafana/provisioning:ro',str(folder/'grafana/dashboards')+':/var/lib/grafana/dashboards:ro']},
             'prometheus': {'image':images['prometheus'],'command':['--config.file=/etc/prometheus/prometheus.yml','--web.enable-remote-write-receiver'],'ports':['127.0.0.1::9090'],'volumes':[str(folder/'prometheus.yml')+':/etc/prometheus/prometheus.yml:ro','prometheus:/prometheus']},
@@ -96,22 +126,28 @@ def smoke():
                 raise AssertionError('Grafana permits anonymous API access')
             except urllib.error.HTTPError as error:
                 assert error.code == 401
+            edge_headers = {'Host': 'papyrus-reader.com'}
+            request(edge+'/', headers=edge_headers)
+            try:
+                request(edge+'/fixture-error', headers=edge_headers)
+            except urllib.error.HTTPError as error:
+                assert error.code == 500
             for dashboard in (folder/'grafana/dashboards').glob('*.json'):
                 for panel in json.loads(dashboard.read_text())['panels']:
                     if panel['type'] == 'logs':
                         continue
                     for target in panel['targets']:
-                        query = target['expr'].replace('$__range','1h')
+                        query = target['expr'].replace('$__range','1h').replace('${host:regex}', PUBLIC_HOSTS)
                         def verify_query():
                             result = request(prometheus+'/api/v1/query?'+urllib.parse.urlencode({'query':query}))
                             assert result['status'] == 'success'
-                            if dashboard.stem == 'app-statistics':
+                            if dashboard.stem in {'app-statistics', 'live-traffic'}:
                                 assert result['data']['result'], (panel['title'], query)
                         retry(verify_query)
-                        if dashboard.stem == 'app-statistics':
+                        if dashboard.stem in {'app-statistics', 'live-traffic'}:
                             def verify_grafana_query():
                                 payload = {'from': str(int(time.time()*1000)-3600000), 'to': str(int(time.time()*1000)),
-                                           'queries': [{**target, 'datasource': panel['datasource'], 'intervalMs': 1000, 'maxDataPoints': 1000}]}
+                                           'queries': [{**target, 'expr': query, 'datasource': panel['datasource'], 'intervalMs': 1000, 'maxDataPoints': 1000}]}
                                 result = request(grafana+'/api/ds/query', payload, auth=True)['results'][target['refId']]
                                 assert any(frame.get('data', {}).get('values', [[]])[0] for frame in result.get('frames', [])), panel['title']
                             retry(verify_grafana_query)
@@ -134,19 +170,32 @@ def smoke():
                 return lines
             retry(verify_log)
             try:
-                request(edge+'/metrics')
+                request(edge+'/metrics', headers=edge_headers)
                 raise AssertionError('Grafana metrics route is public')
             except urllib.error.HTTPError as error:
                 assert error.code == 404
-            request(edge+'/?token=edge-secret')
+            request(edge+'/?token=edge-secret', headers=edge_headers)
             for headers in [{}, {'X-Forwarded-For':'10.77.0.2', 'X-Real-IP':'10.77.0.2', 'CF-Connecting-IP':'10.77.0.2'}]:
                 try:
-                    urllib.request.urlopen(urllib.request.Request(edge+'/vpn-test', headers=headers), timeout=10)
+                    urllib.request.urlopen(urllib.request.Request(edge+'/vpn-test', headers={**headers, **edge_headers}), timeout=10)
                     raise AssertionError('Public request bypassed the VPN gate')
                 except urllib.error.HTTPError as error:
                     assert error.code == 404
             logs = compose('logs','--no-color','caddy',capture=True).stdout
             assert 'edge-secret' not in logs and '"status":200' in logs
+            access_logs = compose('logs','--no-color','--no-log-prefix','caddy',capture=True).stdout.splitlines()
+            access_logs = [line for line in access_logs if line.startswith('{') and 'http.log.access.' in line]
+            assert access_logs
+            request(alloy+'/loki/api/v1/push', {'streams': [{'stream': {'project': 'papyrus-edge', 'service_name': 'proxy'},
+                    'values': [[str(time.time_ns()+index), line] for index, line in enumerate(access_logs)]}]})
+            live = json.loads((folder/'grafana/dashboards/live-traffic.json').read_text())
+            log_query = live['panels'][-1]['targets'][0]['expr'].replace('${host:regex}', PUBLIC_HOSTS)
+            def verify_access_feed():
+                result = request(loki+'/loki/api/v1/query_range?'+urllib.parse.urlencode({'query': log_query, 'limit': 100}))
+                lines = [line[1] for stream in result['data']['result'] for line in stream['values']]
+                assert any('papyrus-reader.com · 500' in line for line in lines), lines
+                assert all('edge-secret' not in line and '127.0.0.1' not in line for line in lines)
+            retry(verify_access_feed)
             compose('up','-d','--force-recreate','loki','grafana')
             loki = address('loki',3100)
             grafana = address('grafana',3000)
