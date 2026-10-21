@@ -38,9 +38,9 @@ def live_traffic_dashboard():
  panel('P95 duration, excluding sync', 'histogram_quantile(0.95, sum by(le,host) (rate(caddy_http_request_duration_seconds_bucket{' + selector + ',host!~"sync[.]papyrus-reader[.]com(:443)?"}[1m])))', 's', 12, 12, description='Completed requests only. No duration is shown while a host has no recent requests. Sync streams are excluded.')
  panel('Server errors per second', error_rate, 'reqps', 0, 20)
  panel('Caddy sample age', 'time() - timestamp(up{job="services",service="edge"})', 's', 12, 20, description='Age of the latest scrape, independent of the host filter. Normal sampling interval is five seconds.')
- log_query = '{project="papyrus-edge",service_name="proxy"} | json | __error__="" | logger=~"http[.]log[.]access[.].*" | request_host=~"${host}" | line_format "{{.request_method}} {{.request_host}} · {{.status}} · {{.duration}} s · {{.size}} bytes"'
+ log_query = '{project="papyrus-edge",service_name="proxy"} | json | __error__="" | logger=~"http[.]log[.]access[.].*" | request_host=~"${host}" | line_format "{{.request_method}} {{.request_host}}{{if .request_uri}}{{.request_uri}}{{else}} [path unavailable]{{end}} · {{if .request_client_ip}}{{.request_client_ip}}{{else}}[IP unavailable]{{end}} · {{.status}} · {{.duration}} s · {{.size}} bytes"'
  panels.append({'id': len(panels)+1, 'title': 'Recent completed requests', 'type': 'logs',
-  'description': 'Newest 100 sanitized access logs, refreshed every five seconds. Use the streaming link and click Live for continuous logs. No URLs, IPs, headers or reading content are collected.',
+  'description': 'Newest 100 sanitized access logs, refreshed every five seconds. Use the streaming link and click Live for continuous logs. Shows paths and client IPs for new requests. Query strings and headers are excluded. Older entries lack these fields.',
   'datasource': {'type': 'loki', 'uid': 'loki'}, 'targets': [{'refId': 'A', 'expr': log_query, 'queryType': 'range', 'maxLines': 100}],
   'gridPos': {'x': 0, 'y': 28, 'w': 24, 'h': 12},
   'options': {'showTime': True, 'showLabels': False, 'wrapLogMessage': True, 'sortOrder': 'Descending', 'enableLogDetails': False}})

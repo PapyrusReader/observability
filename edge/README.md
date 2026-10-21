@@ -47,4 +47,10 @@ to authenticated Grafana only for actual WireGuard peer addresses in
 The private VPN resolver maps this hostname to `10.77.0.1`. Keep the public DNS
 record DNS-only for certificate validation. See `../vpn/README.md` before changing
 this route. The Caddy admin listener remains on container loopback.
-Access logs omit request URLs, addresses, and headers before Docker stores them.
+Access logs retain paths and client IPs, stripping query strings and headers
+before Docker stores them. `CF-Connecting-IP` is trusted only when the connection
+comes from Cloudflare's published IPv4/IPv6 ranges. Other connections use the
+actual peer address. Upstream forwarding headers are replaced with Caddy's
+validated client address, scheme and host. Keep the ranges in `Caddyfile` aligned with
+[Cloudflare's list](https://www.cloudflare.com/ips/). The VPN gate continues to
+check the actual peer address, regardless of forwarding headers.
