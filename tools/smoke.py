@@ -137,7 +137,7 @@ http://papyrus-reader.com:8080 {
                     if panel['type'] == 'logs':
                         continue
                     for target in panel['targets']:
-                        query = target['expr'].replace('$__range','1h').replace('${host:regex}', PUBLIC_HOSTS)
+                        query = target['expr'].replace('$__range','1h').replace('${host}', PUBLIC_HOSTS)
                         def verify_query():
                             result = request(prometheus+'/api/v1/query?'+urllib.parse.urlencode({'query':query}))
                             assert result['status'] == 'success'
@@ -189,7 +189,7 @@ http://papyrus-reader.com:8080 {
             request(alloy+'/loki/api/v1/push', {'streams': [{'stream': {'project': 'papyrus-edge', 'service_name': 'proxy'},
                     'values': [[str(time.time_ns()+index), line] for index, line in enumerate(access_logs)]}]})
             live = json.loads((folder/'grafana/dashboards/live-traffic.json').read_text())
-            log_query = live['panels'][-1]['targets'][0]['expr'].replace('${host:regex}', PUBLIC_HOSTS)
+            log_query = live['panels'][-1]['targets'][0]['expr'].replace('${host}', PUBLIC_HOSTS)
             def verify_access_feed():
                 result = request(loki+'/loki/api/v1/query_range?'+urllib.parse.urlencode({'query': log_query, 'limit': 100}))
                 lines = [line[1] for stream in result['data']['result'] for line in stream['values']]
