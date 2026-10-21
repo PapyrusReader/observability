@@ -58,7 +58,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m]))",
+          "expr": "sum(increase(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host}\"}[1m]))",
           "legendFormat": "{{host}}",
           "instant": true,
           "range": false
@@ -104,7 +104,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(caddy_http_response_size_bytes_sum{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m]))",
+          "expr": "sum(increase(caddy_http_response_size_bytes_sum{job=\"services\",handler=\"subroute\",host=~\"${host}\"}[1m]))",
           "legendFormat": "{{host}}",
           "instant": true,
           "range": false
@@ -150,7 +150,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(caddy_http_requests_in_flight{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"})",
+          "expr": "sum(caddy_http_requests_in_flight{job=\"services\",handler=\"subroute\",host=~\"${host}\"})",
           "legendFormat": "{{host}}",
           "instant": true,
           "range": false
@@ -196,7 +196,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\",code=~\"5..\"}[1m])) or (sum(increase(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m])) * 0)",
+          "expr": "sum(increase(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host}\",code=~\"5..\"}[1m])) or (sum(increase(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host}\"}[1m])) * 0)",
           "legendFormat": "{{host}}",
           "instant": true,
           "range": false
@@ -242,7 +242,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m]))",
+          "expr": "sum by(host) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host}\"}[1m]))",
           "legendFormat": "{{host}}",
           "instant": false,
           "range": true
@@ -278,7 +278,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host) (rate(caddy_http_response_size_bytes_sum{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m]))",
+          "expr": "sum by(host) (rate(caddy_http_response_size_bytes_sum{job=\"services\",handler=\"subroute\",host=~\"${host}\"}[1m]))",
           "legendFormat": "{{host}}",
           "instant": false,
           "range": true
@@ -314,7 +314,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host,code) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m]))",
+          "expr": "sum by(host,code) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host}\"}[1m]))",
           "legendFormat": "{{host}} \u00b7 {{code}}",
           "instant": false,
           "range": true
@@ -350,7 +350,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by(le,host) (rate(caddy_http_request_duration_seconds_bucket{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\",host!~\"sync[.]papyrus-reader[.]com(:443)?\"}[1m])))",
+          "expr": "histogram_quantile(0.95, sum by(le,host) (rate(caddy_http_request_duration_seconds_bucket{job=\"services\",handler=\"subroute\",host=~\"${host}\",host!~\"sync[.]papyrus-reader[.]com(:443)?\"}[1m])))",
           "legendFormat": "{{host}}",
           "instant": false,
           "range": true
@@ -386,7 +386,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(host) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\",code=~\"5..\"}[1m])) or (sum by(host) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host:regex}\"}[1m])) * 0)",
+          "expr": "sum by(host) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host}\",code=~\"5..\"}[1m])) or (sum by(host) (rate(caddy_http_request_duration_seconds_count{job=\"services\",handler=\"subroute\",host=~\"${host}\"}[1m])) * 0)",
           "legendFormat": "{{host}}",
           "instant": false,
           "range": true
@@ -458,7 +458,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{project=\"papyrus-edge\",service_name=\"proxy\"} | json | __error__=\"\" | logger=~\"http[.]log[.]access[.].*\" | request_host=~\"${host:regex}\" | line_format \"{{.request_method}} {{.request_host}} \u00b7 {{.status}} \u00b7 {{.duration}} s \u00b7 {{.size}} bytes\"",
+          "expr": "{project=\"papyrus-edge\",service_name=\"proxy\"} | json | __error__=\"\" | logger=~\"http[.]log[.]access[.].*\" | request_host=~\"${host}\" | line_format \"{{.request_method}} {{.request_host}} \u00b7 {{.status}} \u00b7 {{.duration}} s \u00b7 {{.size}} bytes\"",
           "queryType": "range",
           "maxLines": 100
         }
